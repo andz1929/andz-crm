@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="顧客管理">
+<meta name="theme-color" content="#1c1c1f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>Andz 顧客管理</title>
+<style>
+/* Layout: phone-first app shell — header / scrolling body / bottom tab bar, mirroring the salon's existing dark app */
+:root{
+  --bg:#111113; --surface:#1c1c1f; --card:#28282c; --card2:#212124; --line:#36363b;
+  --fg:#f3f3f5; --muted:#9c9ca4; --accent:#d62f58; --accent-soft:rgba(214,47,88,.2);
+  --pill:#46a594; --gold:#d1aa3f; --gold-soft:rgba(209,170,63,.2); --green:#5aa35d; --green-soft:rgba(90,163,93,.2);
+  --orange:#dc8c2c; --orange-soft:rgba(220,140,44,.2); --sun:#f0585a; --sat:#5aa2ff; --overlay:rgba(0,0,0,.6);
+  --font:-apple-system,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",Meiryo,sans-serif;
+  color-scheme:dark;
+  --sat-top:0px;--sat-bottom:0px;
+}
+@media (display-mode: standalone){:root{--sat-top:env(safe-area-inset-top,0px);--sat-bottom:env(safe-area-inset-bottom,0px)}}
+[hidden]{display:none!important}
+html{height:100%;box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}
+body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-text-size-adjust:100%;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:15px;-webkit-tap-highlight-color:transparent;font-variant-numeric:tabular-nums}
+button,a,label,input,select{touch-action:manipulation}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#app{height:100%;display:flex;flex-direction:column;max-width:760px;margin:0 auto}
+header#hdr{display:flex;align-items:center;gap:12px;padding:calc(12px + var(--sat-top)) 16px 12px;background:var(--surface);border-bottom:1px solid var(--line);min-height:64px}
+header h1{flex:1;margin:0;font-size:19px;font-weight:700;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mnav{display:flex;align-items:center;border:2px solid var(--fg);border-radius:999px;padding:2px}
+.mnav button{padding:6px 10px;font-weight:600;font-size:14px;border-radius:999px}
+.mnav button:active{background:var(--card)}
+.iconbtn{width:42px;height:42px;border-radius:50%;background:var(--card);display:grid;place-items:center;flex:none;font-size:24px;line-height:1}
+.iconbtn svg{width:22px;height:22px}
+.spacer{width:42px;flex:none}
+#banner{padding:10px 16px;background:var(--gold-soft);color:var(--fg);font-size:13px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+#banner b{color:var(--gold)}
+#banner .bb{margin-left:auto;display:flex;gap:6px}
+#main{flex:1;min-height:0;overscroll-behavior:contain;overflow-y:auto;overflow-x:hidden;padding:12px 16px 24px;-webkit-overflow-scrolling:touch}
+#actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 16px;background:var(--bg);border-top:1px solid var(--line)}
+nav#tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 8px calc(8px + var(--sat-bottom));background:var(--surface);border-top:1px solid var(--line)}
+nav#tabs button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:999px;font-size:11px;font-weight:600;color:var(--fg)}
+nav#tabs button svg{width:28px;height:28px}
+nav#tabs button[aria-current="page"]{background:var(--card);color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 14px;border-radius:12px;background:var(--card);font-weight:600;font-size:15px}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.outline{border:1.5px solid var(--accent);color:var(--accent);background:transparent}
+.btn.danger{background:transparent;color:var(--sun);border:1px solid var(--line)}
+.btn.sm{padding:7px 10px;font-size:13px;border-radius:9px}
+.btn:disabled{opacity:.45}
+.seg{display:flex;background:var(--card2);border-radius:999px;padding:3px;gap:2px}
+.seg button{flex:1;padding:8px 6px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:#5a5a60;color:#fff}
+.muted{color:var(--muted)}
+.pill{display:inline-block;max-width:100%;background:var(--pill);color:#fff;border-radius:7px;padding:5px 8px;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.sumline{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:4px 0 8px}
+.sumline strong{font-size:20px}
+.chart{background:var(--surface);border-radius:14px;padding:10px 6px 4px;margin-bottom:12px}
+.chart svg{display:block;width:100%;height:auto}
+.legend{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);padding:2px 10px 6px}
+.legend i{width:10px;height:10px;background:var(--accent);display:inline-block}
+/* visit grid */
+.vgrid{border-top:1px solid var(--line)}
+.vhead,.vrow{display:grid;grid-template-columns:5.4rem 4.4rem 4.6rem 2.2rem minmax(0,1fr);gap:1px;align-items:center}
+.vhead{background:var(--accent);color:#fff;font-size:11px;white-space:nowrap;font-weight:700;position:sticky;top:-12px;z-index:1}
+.vhead span{padding:8px 4px;text-align:center}
+.vhead span:last-child{text-align:left}
+.vrow{background:var(--line);border-bottom:1px solid var(--line);cursor:pointer}
+.vrow>span{background:var(--card2);padding:7px 4px;font-size:12.5px;text-align:center;height:100%;display:flex;align-items:center;justify-content:center;min-width:0}
+.vrow>span:last-child{justify-content:flex-start;padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:2}
+.vrow .pill{width:100%;font-size:12px;padding:4px 4px}
+.dayhead{display:flex;justify-content:space-between;align-items:baseline;padding:14px 4px 6px;font-size:17px;font-weight:600}
+.dayhead small{font-size:12px;color:var(--muted);font-weight:500}
+.star{display:inline-grid;place-items:center;width:24px;height:24px;font-size:10.5px;font-weight:700;color:#222;position:relative}
+.star svg{position:absolute;inset:0;width:24px;height:24px}
+.star b{position:relative;margin-top:2px}
+.empty{background:var(--surface);border-radius:16px;padding:28px 20px;text-align:center;display:grid;gap:12px;justify-items:center}
+.empty h2{margin:0;font-size:18px}
+.empty p{margin:0;color:var(--muted);font-size:14px;line-height:1.7;max-width:34em}
+.empty .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+/* customers */
+.filters{display:grid;gap:10px;margin-bottom:12px}
+.search{display:flex;gap:8px;align-items:center}
+.search input{flex:1;min-width:0;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:12px 16px;color:var(--fg);font-size:16px}
+.chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.chips .btn{padding:10px 4px;font-size:13.5px}
+.ctable{border-top:1px solid var(--line)}
+.chead,.crow{display:grid;grid-template-columns:minmax(0,1.25fr) 1.15fr .75fr 1fr;gap:1px}
+.chead{background:var(--accent);position:sticky;top:-12px;z-index:1}
+.chead button{padding:9px 2px;font-size:12px;font-weight:700;color:#fff}
+.crow{background:var(--line);border-bottom:1px solid var(--line);cursor:pointer}
+.crow>span{background:var(--card2);padding:7px 4px;font-size:13px;display:flex;align-items:center;justify-content:center;min-width:0}
+.crow .pill{width:100%;padding:9px 4px}
+.more{display:block;margin:12px auto 0}
+/* calendar */
+.calbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.calbar .tot{font-size:13px;line-height:1.4}
+.calbar .tot b{font-size:16px}
+.calbar .seg{flex:1 1 260px}
+.calbar .seg button{font-size:13px;padding:7px 4px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.cal .wd{text-align:center;font-size:12px;padding:6px 0;background:var(--surface);color:var(--muted)}
+.cal .cell{background:var(--surface);min-height:84px;padding:3px 2px 4px;display:flex;flex-direction:column;gap:2px;cursor:pointer;min-width:0}
+.cal .cell.out{background:var(--bg);opacity:.55}
+.cal .cell.today{outline:1.5px solid var(--accent);outline-offset:-1.5px}
+.cal .dn{display:flex;justify-content:center;align-items:baseline;gap:3px;font-size:14px}
+.cal .dn small{font-size:9.5px;color:var(--muted)}
+.cal .sun{color:var(--sun)} .cal .sat{color:var(--sat)}
+.cal .cp{background:var(--pill);color:#fff;border-radius:6px;padding:2px 2px;font-size:var(--cfs,10px);line-height:1.25;text-align:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.calfoot{display:flex;justify-content:flex-end;margin-top:10px}
+.calfoot .seg{width:220px}
+/* summary table */
+.tblwrap{overflow-x:auto;margin-top:12px}
+table.sum{width:100%;border-collapse:collapse;font-size:12.5px;min-width:360px}
+table.sum th{background:var(--accent);color:#fff;padding:9px 4px;font-weight:700;border:1px solid var(--bg)}
+table.sum td{background:var(--card2);padding:7px 4px;text-align:center;border:1px solid var(--bg);white-space:nowrap}
+table.sum td small{display:block;font-size:10px;color:var(--muted)}
+table.sum tr.total td{background:var(--card);font-weight:700}
+/* analysis */
+.period{background:var(--card);border-radius:22px;padding:16px;display:grid;gap:10px;justify-items:center;margin-bottom:20px}
+.period .pnav{display:flex;align-items:center;gap:4px;background:var(--accent-soft);border-radius:999px;padding:4px}
+.period .pnav button{padding:6px 10px;border-radius:999px}
+.period .pnav span{font-weight:600;padding:0 4px}
+.period .nums{display:grid;grid-template-columns:1fr 1px 1fr;width:100%;align-items:center;text-align:center}
+.period .nums i{background:var(--line);height:70%}
+.big{font-size:38px;font-weight:800;line-height:1.1}
+.big.red{color:var(--accent)} .big.gold{color:var(--gold)}
+.sec{display:flex;align-items:center;gap:10px;margin:8px 0 12px;color:var(--muted);font-weight:700;font-size:16px}
+.sec::after{content:"";flex:1;height:1px;background:var(--line)}
+.sec svg{width:24px;height:24px;color:var(--accent)}
+.acards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px}
+.acard{background:var(--card);border-radius:20px;padding:14px 14px 10px;text-align:left;display:grid;gap:4px;min-height:150px;align-content:start}
+.acard .ic{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;margin-bottom:22px}
+.acard .ic svg{width:26px;height:26px}
+.acard b{font-size:15px}
+.acard small{color:var(--muted);font-size:12px}
+.acard .arr{justify-self:end;font-size:18px}
+.rank{display:grid;gap:6px}
+.rrow{display:grid;grid-template-columns:2em minmax(0,1fr) auto auto;gap:10px;align-items:center;background:var(--card2);border-radius:10px;padding:8px 10px;cursor:pointer}
+.rrow .no{font-weight:800;color:var(--muted);text-align:center}
+.rrow:nth-child(1) .no{color:var(--gold)}
+.rrow .pill{justify-self:start}
+.rrow .v{font-weight:600;white-space:nowrap}
+.rrow .c{color:var(--muted);font-size:12px;white-space:nowrap}
+/* bars */
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:2.2em minmax(0,1fr) auto;gap:10px;align-items:center}
+.bar .t{height:22px;background:var(--card2);border-radius:6px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.bar .lab{font-weight:700;text-align:center}
+.bar .val{font-size:12.5px;color:var(--muted);white-space:nowrap;text-align:right}
+/* sheets */
+.sheet{position:fixed;inset:0;background:var(--overlay);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.panel{background:var(--surface);width:100%;max-width:640px;max-height:calc(100% - var(--sat-top) - 8px);border-radius:18px 18px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom,0px);animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.panel{animation:none}}
+.phead{display:grid;grid-template-columns:5em 1fr 5em;align-items:center;padding:12px 12px;border-bottom:1px solid var(--line)}
+.phead h2{margin:0;font-size:16px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.phead .x{color:var(--accent);font-weight:600;justify-self:start;padding:6px}
+.pbody{overflow-y:auto;overscroll-behavior:contain;padding:16px;display:grid;gap:14px;align-content:start}
+.field{display:grid;gap:6px}
+.field>span{font-size:12.5px;color:var(--muted);font-weight:600}
+.field input,.field select,.field textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--fg);font-size:16px;font-family:inherit}
+.field textarea{min-height:90px;resize:vertical;line-height:1.5}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sugg{display:grid;gap:4px}
+.sugg button{text-align:left;padding:8px 10px;border-radius:8px;background:var(--card2);display:flex;justify-content:space-between;gap:8px}
+.sugg button small{color:var(--muted)}
+.hint{font-size:12.5px;color:var(--muted);line-height:1.6}
+.hint.warn{color:var(--gold)}
+.stars{display:flex;gap:4px}
+.stars button{width:38px;height:38px;border-radius:8px;background:var(--card2);font-size:20px;color:var(--muted)}
+.stars button.on{color:var(--gold)}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.btnrow .btn{flex:1}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tile{background:var(--card2);border-radius:12px;padding:10px 12px}
+.tile small{display:block;color:var(--muted);font-size:11.5px}
+.tile b{font-size:18px}
+dl.info{margin:0;display:grid;grid-template-columns:6em minmax(0,1fr);gap:8px 12px;font-size:14px}
+dl.info dt{color:var(--muted)}
+dl.info dd{margin:0;white-space:pre-wrap;word-break:break-word;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hist{display:grid;gap:6px}
+.hrow{background:var(--card2);border-radius:10px;padding:9px 12px;display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;cursor:pointer}
+.hrow .d{font-weight:600}
+.hrow .a{font-weight:700;color:var(--gold)}
+.hrow .m{grid-column:1/-1;color:var(--muted);font-size:12.5px;white-space:pre-wrap;word-break:break-word}
+.hrow .s{color:var(--muted);font-size:12.5px}
+h3{margin:4px 0 0;font-size:15px}
+.confirm{background:var(--accent-soft);border-radius:12px;padding:12px;display:grid;gap:10px}
+.maplist{display:grid;gap:8px}
+.mapitem{background:var(--card2);border-radius:12px;padding:10px 12px;display:grid;gap:6px}
+.mapitem .h{font-weight:700}
+.mapitem .ex{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mapitem select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;color:var(--fg);font-size:15px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:22px 14px;text-align:center;display:grid;gap:8px;justify-items:center}
+.result{display:grid;gap:6px;background:var(--card2);border-radius:12px;padding:14px}
+.result div{display:flex;justify-content:space-between}
+textarea.out{width:100%;min-height:200px;background:var(--card2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px}
+.pbody.vform{padding:0 0 20px;gap:0}
+.lgroup{background:var(--surface);margin-top:14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.vform .lgroup:first-child{margin-top:0;border-top:0}
+.lrow{display:grid;grid-template-columns:auto minmax(0,1fr) 14px;align-items:center;gap:10px;width:100%;min-height:56px;padding:6px 12px 6px 16px;border-bottom:1px solid var(--line);text-align:left;font-size:16px;background:var(--card2)}
+.lgroup>.lrow:last-child{border-bottom:0}
+.lrow:not(button){grid-template-columns:auto minmax(0,1fr)}
+.lrow .rv{display:flex;justify-content:flex-end;align-items:center;gap:6px;min-width:0;text-align:right}
+.lrow .rv .pill{font-size:15px;padding:6px 16px;border-radius:10px}
+.lrow .chev{color:var(--muted);font-size:24px;line-height:1}
+.lrow:disabled{opacity:.5}
+.lrow input{background:transparent;border:0;color:var(--fg);font:inherit;font-size:16px;text-align:right;min-width:0;width:100%;padding:6px 0}
+.lrow input[type=date]{width:auto;max-width:9.5em}.lrow input[type=time]{width:auto;max-width:6.2em}
+.lrow input::placeholder{color:var(--muted)}
+.picker{padding:10px 12px;display:grid;gap:8px;background:var(--surface);border-bottom:1px solid var(--line)}
+.picker input{width:100%;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--fg);font-size:16px}
+.qt{display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:16px 12px 0;color:var(--muted);font-size:15px}
+.sw{appearance:none;-webkit-appearance:none;width:58px;height:34px;border-radius:999px;background:var(--line);position:relative;cursor:pointer;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:50%;background:#fff;transition:transform .15s}
+.sw:checked{background:var(--pill)}.sw:checked::after{transform:translateX(24px)}
+.quick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--line)}
+.quick button{padding:9px 4px;border-radius:9px;background:var(--card);font-weight:600;font-size:14px}
+.quick button.on{background:var(--pill);color:#fff}
+.rate{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:12px;padding:18px 12px 6px 16px}
+.bigstars{display:flex;justify-content:space-between;gap:4px}
+.bigstars button{width:48px;height:48px;display:grid;place-items:center}
+.bigstars svg{width:44px;height:44px;fill:#d6d6dc}
+.bigstars button.on svg{fill:var(--gold)}
+.mlabel{color:var(--muted);padding:22px 16px 8px}
+textarea.memo{width:100%;min-height:140px;background:var(--card2);border:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);color:var(--fg);font:inherit;font-size:16px;line-height:1.6;padding:14px 16px;resize:vertical;margin-bottom:16px}
+textarea.memo::placeholder{color:var(--muted)}
+.vform .hint{padding:0 16px}
+.phead .pr{justify-self:end}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#f3f3f5;color:#111;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:40;max-width:calc(100% - 32px);text-align:center}
+#savechip{position:fixed;top:calc(8px + var(--sat-top));right:12px;background:var(--card);color:var(--muted);font-size:11px;padding:4px 10px;border-radius:999px;z-index:30}
+.loading{padding:60px 0;text-align:center;color:var(--muted)}
+</style>
+</head><body>
+
+<div id="app">
+  <header id="hdr"></header>
+  <div id="banner" hidden></div>
+  <main id="main"><div class="loading">読み込み中…</div></main>
+  <div id="actions" hidden>
+    <button class="btn primary" data-act="bdays">誕生日リスト</button>
+    <button class="btn primary" data-act="newVisit">新規登録</button>
+  </div>
+  <nav id="tabs" aria-label="メニュー">
+    <button data-act="tab" data-tab="input"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M18 5H7v19h13v-7"/><path d="M4 9h5M4 14h5M4 19h5"/><path d="M11 11h4M11 15h3"/><path d="M15 18l1-4 8-8 3 3-8 8z"/></svg>入力</button>
+    <button data-act="tab" data-tab="customers"><svg viewBox="0 0 28 28" fill="currentColor"><circle cx="14" cy="9" r="4.5"/><path d="M5 23c0-5 4-8 9-8s9 3 9 8z"/><circle cx="6.5" cy="10.5" r="3.3"/><circle cx="21.5" cy="10.5" r="3.3"/><path d="M0.5 22c0-4 2.5-6.5 6-6.5 1 0 2 .2 2.8.6C6.5 18 5 20 4.6 22zM27.5 22c0-4-2.5-6.5-6-6.5-1 0-2 .2-2.8.6 2.8 1.9 4.3 3.9 4.7 5.9z"/></svg>顧客</button>
+    <button data-act="tab" data-tab="calendar"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="22" height="20" rx="3"/><path d="M9 2v6M19 2v6M3 11h22" stroke-linecap="round"/><g fill="currentColor" stroke="none"><rect x="7" y="14" width="3" height="3"/><rect x="12.5" y="14" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/><rect x="7" y="19" width="3" height="3"/><rect x="12.5" y="19" width="3" height="3"/><rect x="18" y="19" width="3" height="3"/></g></svg>カレンダー</button>
+    <button data-act="tab" data-tab="summary"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="2" width="18" height="24" rx="2"/><rect x="8" y="5" width="12" height="5"/><g fill="currentColor" stroke="none"><rect x="8" y="13" width="3" height="2.5"/><rect x="12.5" y="13" width="3" height="2.5"/><rect x="17" y="13" width="3" height="2.5"/><rect x="8" y="17.5" width="3" height="2.5"/><rect x="12.5" y="17.5" width="3" height="2.5"/><rect x="17" y="17.5" width="3" height="2.5"/><rect x="8" y="22" width="3" height="2"/><rect x="12.5" y="22" width="3" height="2"/><rect x="17" y="22" width="3" height="2"/></g></svg>集計</button>
+    <button data-act="tab" data-tab="analysis"><svg viewBox="0 0 28 28" fill="currentColor"><path d="M12.5 4.5A10 10 0 1 0 23.5 15.5H12.5z"/><path d="M15 2v11h11A11 11 0 0 0 15 2z"/></svg>分析</button>
+  </nav>
+</div>
+<div id="toast" hidden></div>
+<div id="savechip" hidden></div>
+
+<script>
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const yen=n=>(Math.round(n)||0).toLocaleString('ja-JP')+'円';
+const WD='日月火水木金土';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const dstr=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayStr=()=>dstr(new Date());
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const fmtD=s=>s?s.replace(/^(\d+)-0?(\d+)-0?(\d+)$/,'$1/$2/$3'):'';
+const wdOf=s=>WD[parseD(s).getDay()];
+const fmtDur=m=>`${Math.floor((m||0)/60)}時間${pad((m||0)%60)}分`;
+const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const norm=s=>String(s??'').normalize('NFKC').replace(/\s+/g,' ').trim();
+const nameKey=s=>norm(s).replace(/\s/g,'').toLowerCase();
+function hash(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return Math.abs(h)}
+const daysSince=s=>Math.floor((parseD(todayStr())-parseD(s))/864e5);
+const capCache={};
+const cap=n=>capCache[n]||(capCache[n]=(window.claude&&typeof window.claude.use==='function')?window.claude.use(n).catch(()=>null):Promise.resolve(null));
+
+/* ---------- data ---------- */
+const D={customers:new Map(),visits:new Map(),ver:0,_idx:null,_iv:-1,_st:new Map(),_sv:-1};
+const cmpVisit=(a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.start||'99')<(b.start||'99')?-1:(a.start||'99')>(b.start||'99')?1:0;
+function byCustomer(){
+  if(D._iv!==D.ver){const m=new Map();for(const v of D.visits.values()){let a=m.get(v.cid);if(!a)m.set(v.cid,a=[]);a.push(v)}for(const a of m.values())a.sort(cmpVisit);D._idx=m;D._iv=D.ver}
+  return D._idx;
+}
+const visitsOf=cid=>byCustomer().get(cid)||[];
+function stats(c){
+  if(D._sv!==D.ver){D._st=new Map();D._sv=D.ver}
+  let s=D._st.get(c.id);if(s)return s;
+  const vs=visitsOf(c.id),L=c.legacy;let count=0,total=0,last='',first='';
+  const useLegacy=L&&(L.last||!vs.length);
+  if(useLegacy){count=+L.count||0;total=+L.total||0;last=L.last||'';first=L.first||''}
+  for(const v of vs){
+    if(!useLegacy||!L.last||v.date>L.last){count++;total+=+v.amount||0}
+    if(!last||v.date>last)last=v.date;
+    if(!first||v.date<first)first=v.date;
+  }
+  if(useLegacy&&!count&&(L.last||L.first))count=0;
+  s={count,total,last,first,avg:count?total/count:0};D._st.set(c.id,s);return s;
+}
+function findByName(name){const k=nameKey(name);for(const c of D.customers.values())if(nameKey(c.name)===k)return c;return null}
+
+/* ---------- storage ---------- */
+const IDB={db:null,
+  open(){return new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('andz-crm',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(this.db=r.result);r.onerror=()=>rej(r.error)})},
+  get(k){return new Promise((res,rej)=>{const q=this.db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
+  set(k,v){return new Promise((res,rej)=>{const tx=this.db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})},
+  del(k){return new Promise((res,rej)=>{const tx=this.db.transaction('kv','readwrite');tx.objectStore('kv').delete(k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}};
+const Store={
+  mode:'loading',db:null,uid:null,dirty:new Set(),timer:null,writing:false,failed:false,onProgress:null,
+  async init(){
+    const [db,user]=await Promise.all([cap('db'),cap('user')]);
+    if(db&&user){try{this.uid=await user.id()}catch(e){}}
+    if(db&&this.uid){
+      this.db=db;this.mode='db';
+      try{await this.loadDb()}catch(e){console.error(e);toast('データを読み込めませんでした。ページを開き直してください')}
+    }else{this.mode='local';await this.loadLocal();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}
+  },
+  col(){return this.db.collection('data/users/'+this.uid)},
+  async loadDb(){
+    const snap=await this.col().limit(1000).get();
+    D.customers.clear();D.visits.clear();
+    for(const d of snap.docs){const b=d.data();if(!b||!Array.isArray(b.items))continue;
+      if(d.id.startsWith('c-'))for(const c of b.items)D.customers.set(c.id,c);
+      else if(d.id.startsWith('v-'))for(const v of b.items)D.visits.set(v.id,v);}
+    D.ver++;
+  },
+  async loadLocal(){
+    let j=null;
+    try{await IDB.open();j=await IDB.get('data')}catch(e){IDB.db=null}
+    if(!j){try{j=JSON.parse(localStorage.getItem('andz-crm')||'null')}catch(e){}}
+    if(j){for(const c of j.c)D.customers.set(c.id,c);for(const v of j.v)D.visits.set(v.id,v);D.ver++}
+  },
+  async saveLocal(){
+    const data={c:[...D.customers.values()],v:[...D.visits.values()]};
+    if(IDB.db){await IDB.set('data',data);try{localStorage.removeItem('andz-crm')}catch(e){}return}
+    localStorage.setItem('andz-crm',JSON.stringify(data));
+  },
+  cb(id){return 'c-'+pad(hash(id)%32)},
+  vb(v){return 'v-'+v.date.slice(0,7)+'-'+(+v.date.slice(8,10)<=15?1:2)},
+  touchC(c){D.ver++;if(S.sample)return;this.dirty.add(this.cb(c.id));this.schedule()},
+  touchV(v){D.ver++;if(S.sample)return;if(v&&v.date)this.dirty.add(this.vb(v));this.schedule()},
+  schedule(){clearTimeout(this.timer);this.failed=false;setSave('saving');this.timer=setTimeout(()=>this.flush(),500)},
+  async flush(){
+    if(this.writing)return;this.writing=true;
+    try{
+      if(this.mode!=='db'){this.dirty.clear();try{await this.saveLocal()}catch(e){toast('この端末に保存できませんでした。空き容量を確認してください')}}
+      else{while(this.dirty.size){const id=this.dirty.values().next().value;this.dirty.delete(id);
+        try{await this.writeBucket(id)}catch(e){this.dirty.add(id);throw e}
+        if(this.onProgress)this.onProgress(this.dirty.size)}}
+      setSave('saved');
+    }catch(e){this.failed=true;setSave('error');toast(dbMsg(e))}
+    finally{this.writing=false;if(this.dirty.size&&!this.failed)this.flush()}
+  },
+  items(id){return id.startsWith('c-')?[...D.customers.values()].filter(c=>this.cb(c.id)===id):[...D.visits.values()].filter(v=>this.vb(v)===id)},
+  async writeBucket(id){
+    const items=this.items(id),ref=this.col().doc(id);
+    for(let i=0;;i++){
+      try{if(items.length)await ref.set({items});else await ref.delete();return}
+      catch(e){const c=e&&e.code;if((c==='resource_exhausted'||c==='unavailable')&&i<6){await sleep(800*(i+1)+Math.random()*600);continue}throw e}
+    }
+  },
+  async wipe(){
+    D.customers.clear();D.visits.clear();D.ver++;
+    if(this.mode==='db'){const snap=await this.col().limit(1000).get();for(const d of snap.docs){await this.col().doc(d.id).delete()}}
+    else{try{localStorage.removeItem('andz-crm')}catch(e){}try{if(IDB.db)await IDB.del('data')}catch(e){}}
+  }
+};
+function dbMsg(e){const c=e&&e.code;
+  if(c==='quota_exceeded')return '保存できる容量の上限に達しました';
+  if(c==='revoked'||c==='not_granted')return 'このページでは保存できません。開き直してください';
+  return '保存に失敗しました。通信状態を確認して、もう一度操作してください';}
+function setSave(s){const el=$('#savechip');if(s==='saving'){el.textContent='保存中…';el.hidden=false}else if(s==='error'){el.textContent='未保存あり';el.hidden=false}else{el.textContent='保存しました';setTimeout(()=>{if(el.textContent==='保存しました')el.hidden=true},1200)}}
+document.addEventListener('visibilitychange',async()=>{
+  if(document.visibilityState==='visible'&&Store.mode==='db'&&!S.sample&&!Store.dirty.size&&!Store.writing){try{await Store.loadDb();refreshUI()}catch(e){}}
+});
+
+/* ---------- app state ---------- */
+const now=new Date();
+const S={tab:'input',month:{y:now.getFullYear(),m:now.getMonth()+1},year:now.getFullYear(),q:'',sort:{key:'last',dir:-1},limit:200,
+  calMode:'name',calSize:0,metric:'amount',rankP:'month',sample:false,ready:false};
+
+/* ---------- sample data (shown only when nothing is saved) ---------- */
+function loadSample(){
+  let seed=7;const rnd=()=>((seed=(seed*16807)%2147483647)/2147483647);
+  const names=['佐藤美咲','鈴木陽菜','高橋さくら','田中結衣','伊藤まお','渡辺彩花','山本ひかり','中村さん','小林母','加藤七海','吉田りん','山田葵','佐々木優奈','山口さん','松本莉子','井上ほのか','木村玲奈','林さん娘','清水愛','森杏奈','池田かおり','橋本さん'];
+  const memos=['カット＋カラー 8トーン','前髪カットのみ','トリートメント追加','根元リタッチ','次回パーマ希望','シルバー系カラー','いつもの長さで','縮毛矯正 前髪のみ',''];
+  const prices=[3240,5280,8580,11880,14080,16060,20710];
+  const cs=names.map((n,i)=>({id:'s'+i,name:n,kana:'',phone:i%3?'':'090-0000-00'+pad(i),birthday:i%4===0?`19${80+i}-${pad(i%12+1)}-${pad(i+3)}`:'',memo:i%5===0?'サンプルのお客様です':''}));
+  D.customers.clear();D.visits.clear();cs.forEach(c=>D.customers.set(c.id,c));
+  const end=new Date();let k=0;
+  for(let d=new Date(end.getFullYear(),end.getMonth()-4,1);d<=end;d.setDate(d.getDate()+1)){
+    if(d.getDay()===2)continue;const n=3+Math.floor(rnd()*4);
+    for(let j=0;j<n;j++){const c=cs[Math.floor(rnd()*cs.length)];
+      D.visits.set('sv'+k,{id:'sv'+k++,cid:c.id,date:dstr(d),start:pad(10+j*1+Math.floor(rnd()*2))+':'+(rnd()<.5?'00':'30'),dur:[60,60,60,90,120][Math.floor(rnd()*5)],amount:prices[Math.floor(rnd()*prices.length)],rating:Math.floor(rnd()*4),cat:'',memo:memos[Math.floor(rnd()*memos.length)]})}
+  }
+  S.sample=true;D.ver++;
+}
+function ensureReal(){if(S.sample){D.customers.clear();D.visits.clear();S.sample=false;D.ver++;toast('サンプルを消去しました')}}
+
+/* ---------- mutations ---------- */
+function saveCustomer(c){D.customers.set(c.id,c);Store.touchC(c);refreshUI()}
+function saveVisit(v,oldDate){if(oldDate&&oldDate!==v.date&&!S.sample)Store.dirty.add(Store.vb({date:oldDate}));D.visits.set(v.id,v);Store.touchV(v);refreshUI()}
+function deleteVisit(v){D.visits.delete(v.id);Store.touchV(v);refreshUI()}
+function deleteCustomer(c){for(const v of visitsOf(c.id)){D.visits.delete(v.id);if(!S.sample)Store.dirty.add(Store.vb(v))}D.customers.delete(c.id);Store.touchC(c);refreshUI()}
+
+/* ---------- UI shell ---------- */
+let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600)}
+const gear='<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.4 13a7.5 7.5 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.6 7.6 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.6 7.6 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.5 7.5 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1l.4 2.6h4l.4-2.6c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z" transform="translate(-1 0)"/></svg>';
+const mnav=p=>`<div class="mnav"><button data-act="${p}prev" aria-label="前へ">←|</button><button data-act="${p}now">${p==='y'?'今年':'今月'}</button><button data-act="${p}next" aria-label="次へ">|→</button></div>`;
+function renderHeader(){
+  const h=$('#hdr'),{y,m}=S.month;
+  h.innerHTML={
+    input:`${mnav('m')}<h1>${y}年${m}月</h1><button class="iconbtn" data-act="settings" aria-label="データ管理">${gear}</button>`,
+    customers:`<button class="iconbtn" data-act="settings" aria-label="データ管理">${gear}</button><h1>顧客一覧 (${D.customers.size}件)</h1><button class="iconbtn" data-act="newCustomer" aria-label="お客様を追加">＋</button>`,
+    calendar:`${mnav('m')}<h1>${y}年${m}月</h1><span class="spacer"></span>`,
+    summary:`${mnav('y')}<h1>${S.year}年</h1><span class="spacer"></span>`,
+    analysis:`<span class="spacer"></span><h1>分析メニュー</h1><button class="iconbtn" data-act="settings" aria-label="データ管理">${gear}</button>`
+  }[S.tab];
+}
+function renderBanner(){
+  const b=$('#banner');
+  if(S.sample){b.hidden=false;b.innerHTML=`<span><b>サンプル表示中</b>　実際のデータではありません（保存されません）</span><span class="bb"><button class="btn sm primary" data-act="import">CSVを取り込む</button><button class="btn sm" data-act="clearSample">消す</button></span>`}
+  else b.hidden=true;
+}
+function render(){
+  if(!S.ready)return;
+  renderHeader();renderBanner();
+  const main=$('#main');main.innerHTML='';
+  ({input:renderInput,customers:renderCustomers,calendar:renderCalendar,summary:renderSummary,analysis:renderAnalysis})[S.tab](main);
+  $('#actions').hidden=S.tab!=='input';
+  document.querySelectorAll('#tabs button').forEach(b=>b.dataset.tab===S.tab?b.setAttribute('aria-current','page'):b.removeAttribute('aria-current'));
+}
+function refreshUI(){const sc=$('#main').scrollTop;render();$('#main').scrollTop=sc;for(const s of sheets)if(s.live)s.draw()}
+
+/* ---------- chart ---------- */
+function niceStep(r){const p=Math.pow(10,Math.floor(Math.log10(r||1)));const f=r/p;return (f<=1?1:f<=2?2:f<=5?5:10)*p}
+function lineChart(vals,{xl,yf,label}){
+  const W=360,H=190,L=50,R=12,T=10,B=24,iw=W-L-R,ih=H-T-B,n=vals.length;
+  const nums=vals.filter(v=>v!=null);const mx=Math.max(1,...nums);const step=niceStep(mx/4);const top=Math.ceil(mx/step)*step;
+  const X=i=>L+(n>1?i*iw/(n-1):iw/2),Y=v=>T+ih-v/top*ih;
+  let g='';for(let v=0;v<=top+1e-9;v+=step){g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${L-6}" y="${Y(v)+3.5}" text-anchor="end" font-size="10" fill="var(--muted)">${yf(v)}</text>`}
+  vals.forEach((v,i)=>{const t=xl(i);if(t)g+=`<line x1="${X(i)}" x2="${X(i)}" y1="${T}" y2="${T+ih}" stroke="var(--line)" stroke-dasharray="2 3"/><text x="${X(i)}" y="${H-6}" text-anchor="middle" font-size="10" fill="var(--muted)">${t}</text>`});
+  const pts=vals.map((v,i)=>v==null?null:[X(i),Y(v)]).filter(Boolean);
+  let p='';if(pts.length){const d=pts.map((q,i)=>(i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)).join(' ');
+    p=`<path d="${d} L${pts[pts.length-1][0]} ${T+ih} L${pts[0][0]} ${T+ih}Z" fill="var(--accent)" fill-opacity=".14"/><path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`+
+      pts.map((q,i)=>`<circle cx="${q[0]}" cy="${q[1]}" r="${i===pts.length-1?4:2.3}" fill="var(--accent)"/>`).join('')}
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">${g}<line x1="${L}" x2="${L}" y1="${T}" y2="${T+ih}" stroke="var(--muted)"/>${p}</svg><div class="legend"><i></i>${esc(label)}</div></div>`;
+}
+const yMan=v=>v>=10000?(v/10000).toLocaleString('ja-JP',{maximumFractionDigits:1})+'万':v.toLocaleString('ja-JP');
+
+/* ---------- components ---------- */
+const starHtml=r=>`<span class="star" aria-label="評価${r||0}"><svg viewBox="0 0 24 24"><path d="M12 1.8l3 6.4 7 .9-5.1 4.8 1.3 6.9L12 17.4l-6.2 3.4 1.3-6.9L2 9.1l7-.9z" fill="#e9e9ee"/></svg><b>${r||0}</b></span>`;
+const cname=cid=>{const c=D.customers.get(cid);return c?c.name:'（削除済み）'};
+function visitRows(vs){return vs.map(v=>`<div class="vrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span><span class="pill">${esc(cname(v.cid))}</span></span><span>${fmtDur(v.dur)}</span><span>${yen(v.amount)}</span><span>${starHtml(v.rating)}</span><span>${esc((v.memo||'').replace(/\n/g,' '))}</span></div>`).join('')}
+const vhead=`<div class="vhead"><span>名前</span><span>滞在時間</span><span>金額</span><span>評価</span><span>メモ</span></div>`;
+function emptyState(){return `<div class="empty"><h2>まだお客様が登録されていません</h2><p>今お使いのアプリから書き出したCSVを取り込むと、お客様と来店履歴をそのまま移せます。1件ずつ登録することもできます。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button><button class="btn" data-act="newVisit">来店を記録</button><button class="btn" data-act="sample">サンプルで試す</button></div></div>`}
+const monthVisits=(y,m)=>{const k=`${y}-${pad(m)}`;return [...D.visits.values()].filter(v=>v.date.startsWith(k))};
+
+/* ---------- tab: input ---------- */
+function renderInput(main){
+  if(!D.customers.size&&!D.visits.size){main.innerHTML=emptyState();return}
+  const {y,m}=S.month,vs=monthVisits(y,m),dim=new Date(y,m,0).getDate();
+  const total=vs.reduce((a,v)=>a+(+v.amount||0),0);
+  const daily=Array(dim).fill(null);for(const v of vs){const d=+v.date.slice(8)-1;daily[d]=(daily[d]||0)+(+v.amount||0)}
+  const t=new Date();const lastDay=(y===t.getFullYear()&&m===t.getMonth()+1)?t.getDate():dim;
+  for(let i=0;i<lastDay;i++)if(daily[i]==null)daily[i]=0;
+  const byDay={};for(const v of vs)(byDay[v.date]=byDay[v.date]||[]).push(v);
+  const days=Object.keys(byDay).sort().reverse();
+  main.innerHTML=`<div class="sumline"><span class="muted">${vs.length}件の来店</span><strong>${m}月合計: ${yen(total)}</strong></div>`+
+    lineChart(daily,{xl:i=>(i+1)%5===0?(i+1)+'日':null,yf:yMan,label:'1日の金額'})+
+    (days.length?`<div class="vgrid">${vhead}${days.map(d=>{const a=byDay[d].sort(cmpVisit);return `<div class="dayhead">${+d.slice(8)}日 (${wdOf(d)})<small>${a.length}件・${yen(a.reduce((s,v)=>s+(+v.amount||0),0))}</small></div>${visitRows(a)}`}).join('')}</div>`
+      :`<div class="empty"><p>${m}月の来店記録はまだありません。下の「新規登録」から記録できます。</p></div>`);
+}
+
+/* ---------- tab: customers ---------- */
+function renderCustomers(main){
+  if(!D.customers.size){main.innerHTML=emptyState();return}
+  main.innerHTML=`<div class="filters"><div class="search"><input id="cq" type="search" placeholder="名前・ふりがな・電話で検索" value="${esc(S.q)}" autocomplete="off"><button class="iconbtn" data-act="clearQ" aria-label="検索を消す">×</button></div>
+  <div class="chips"><button class="btn outline" data-act="allstats">全顧客集計</button><button class="btn outline" data-act="an" data-kind="money">ランキング顧客</button><button class="btn outline" data-act="yearcmp">年比較</button></div></div>
+  <div class="ctable"><div class="chead">${[['name','名前'],['last','最終来店日'],['count','来店回数'],['total','合計金額']].map(([k,l])=>`<button data-act="sort" data-key="${k}">${l}${S.sort.key===k?(S.sort.dir>0?' ▲':' ▼'):''}</button>`).join('')}</div><div id="clist"></div></div>`;
+  $('#cq').addEventListener('input',e=>{S.q=e.target.value;S.limit=200;drawClist()});
+  drawClist();
+}
+function filteredCustomers(){
+  const q=nameKey(S.q);let a=[...D.customers.values()];
+  if(q)a=a.filter(c=>nameKey(c.name).includes(q)||nameKey(c.kana).includes(q)||nameKey(c.nick).includes(q)||nameKey(c.phone).replace(/-/g,'').includes(q.replace(/-/g,'')));
+  const {key,dir}=S.sort;
+  a.sort((x,y)=>{if(key==='name')return dir*(x.kana||x.name).localeCompare(y.kana||y.name,'ja');const sx=stats(x),sy=stats(y);const vx=sx[key]||'',vy=sy[key]||'';return vx<vy?-dir:vx>vy?dir:0});
+  return a;
+}
+function drawClist(){
+  const el=$('#clist');if(!el)return;const a=filteredCustomers();
+  el.innerHTML=a.slice(0,S.limit).map(c=>{const s=stats(c);return `<div class="crow" data-act="cust" data-id="${c.id}" role="button" tabindex="0"><span><span class="pill">${esc(c.name)}</span></span><span>${s.last?fmtD(s.last):'—'}</span><span>${s.count}</span><span>${yen(s.total)}</span></div>`}).join('')+
+    (a.length>S.limit?`<button class="btn more" data-act="moreC">さらに表示（残り${a.length-S.limit}件）</button>`:'')+(a.length?'':'<p class="muted" style="text-align:center;padding:20px">見つかりませんでした</p>');
+}
+
+/* ---------- tab: calendar ---------- */
+function renderCalendar(main){
+  const {y,m}=S.month,first=new Date(y,m-1,1),dim=new Date(y,m,0).getDate();
+  const vs=monthVisits(y,m),total=vs.reduce((a,v)=>a+(+v.amount||0),0);
+  const byDay={};for(const v of [...D.visits.values()])(byDay[v.date]=byDay[v.date]||[]).push(v);
+  const start=new Date(y,m-1,1-first.getDay());const cells=Math.ceil((first.getDay()+dim)/7)*7;const today=todayStr();
+  const fs=['10px','11.5px','13px'][S.calSize];
+  const lab=v=>({name:cname(v.cid),time:fmtDur(v.dur).replace('時間',':').replace('分',''),money:(+v.amount||0).toLocaleString('ja-JP'),start:v.start||'—',cat:v.cat||cname(v.cid)})[S.calMode];
+  let g=[...WD].map((w,i)=>`<div class="wd ${i===0?'sun':i===6?'sat':''}">${w}</div>`).join('');
+  for(let i=0;i<cells;i++){const d=new Date(start);d.setDate(start.getDate()+i);const ds=dstr(d),a=(byDay[ds]||[]).sort(cmpVisit),wd=d.getDay();
+    g+=`<div class="cell ${d.getMonth()!==m-1?'out':''} ${ds===today?'today':''}" data-act="day" data-date="${ds}" role="button" tabindex="0" aria-label="${d.getMonth()+1}月${d.getDate()}日 ${a.length}件"><div class="dn"><span class="${wd===0?'sun':wd===6?'sat':''}">${d.getDate()}</span>${a.length?`<small>${a.length}件</small>`:''}</div>${a.map(v=>`<div class="cp">${esc(lab(v))}</div>`).join('')}</div>`}
+  main.innerHTML=`<div class="calbar"><div class="tot">${m}月1日〜${m}月${dim}日<br><b>合計: ${yen(total)}</b></div><div class="seg" role="group" aria-label="表示">${[['name','名前'],['time','時間'],['money','お金'],['start','開始'],['cat','カテ']].map(([k,l])=>`<button data-act="calmode" data-mode="${k}" aria-pressed="${S.calMode===k}">${l}</button>`).join('')}</div></div>
+  <div class="cal" style="--cfs:${fs}">${g}</div>
+  <div class="calfoot"><div class="seg" role="group" aria-label="文字の大きさ">${['通常','大','特大'].map((l,i)=>`<button data-act="calsize" data-size="${i}" aria-pressed="${S.calSize===i}">${l}</button>`).join('')}</div></div>`;
+}
+
+/* ---------- tab: summary ---------- */
+function renderSummary(main){
+  const y=S.year,rows=[];const t=new Date();
+  for(let m=1;m<=12;m++){const vs=monthVisits(y,m);rows.push({m,amount:vs.reduce((a,v)=>a+(+v.amount||0),0),mins:vs.reduce((a,v)=>a+(+v.dur||0),0),count:vs.length})}
+  const tot={amount:0,mins:0,count:0};rows.forEach(r=>{tot.amount+=r.amount;tot.mins+=r.mins;tot.count+=r.count});
+  const future=m=>y>t.getFullYear()||(y===t.getFullYear()&&m>t.getMonth()+1);
+  const met=S.metric;const vals=rows.map(r=>future(r.m)?null:met==='mins'?Math.round(r.mins/60):r[met]);
+  const label={amount:'総金額',mins:'総時間',count:'件数'}[met];
+  const yf={amount:yMan,mins:v=>v+'h',count:v=>v+'件'}[met];
+  const avg=r=>r.count?(Math.round(r.amount/r.count)).toLocaleString('ja-JP')+'円/件':'';
+  const mh=n=>`${Math.floor(n/60)}時間${pad(n%60)}分`;
+  main.innerHTML=lineChart(vals,{xl:i=>(i+1)%2===0?(i+1)+'月':null,yf,label})+
+    `<div class="seg" role="group" aria-label="グラフの項目">${[['amount','総額'],['mins','総時間'],['count','件数']].map(([k,l])=>`<button data-act="metric" data-m="${k}" aria-pressed="${met===k}">${l}</button>`).join('')}</div>
+    <div class="tblwrap"><table class="sum"><thead><tr><th>月</th><th>総額</th><th>総時間</th><th>件数</th><th>平均額</th></tr></thead><tbody>
+    <tr class="total"><td>合計</td><td>${yen(tot.amount)}</td><td>${mh(tot.mins)}</td><td>${tot.count}件</td><td>${avg(tot)}</td></tr>
+    ${rows.map(r=>{const dim=new Date(y,r.m,0).getDate();const f=future(r.m)&&!r.count;return `<tr><td>${r.m}月<small>${r.m}/1〜${r.m}/${dim}</small></td><td>${f?'':yen(r.amount)}</td><td>${f?'':mh(r.mins)}</td><td>${f?'':r.count+'件'}</td><td>${avg(r)}</td></tr>`}).join('')}
+    </tbody></table></div>`;
+}
+
+/* ---------- tab: analysis ---------- */
+const ICONS={
+  heart:'<svg viewBox="0 0 24 24" fill="var(--accent)"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg>',
+  yen:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--gold)"/><path d="M8 6l4 6 4-6M12 12v6M8.5 12.5h7M8.5 15h7" stroke="#2a2a2e" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
+  calok:'<svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><rect x="2" y="4" width="17" height="15" rx="2"/><path d="M2 9h17"/><circle cx="18" cy="17" r="4.5" fill="var(--green)" stroke="none"/><path d="M16 17l1.5 1.5 2.5-3" stroke="#fff" stroke-width="1.6"/></svg>',
+  calng:'<svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><rect x="2" y="4" width="17" height="15" rx="2"/><path d="M2 9h17"/><circle cx="18" cy="17" r="4.5" fill="var(--orange)" stroke="none"/><path d="M18 14.5v3M18 19.3v.2" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 14h8M8 17h6"/><path d="M12 10.5s-3-1.8-3-3.7a1.6 1.6 0 0 1 3-.8 1.6 1.6 0 0 1 3 .8c0 1.9-3 3.7-3 3.7z" fill="var(--accent)" stroke="none"/></svg>'
+};
+function renderAnalysis(main){
+  const {y,m}=S.month,vs=monthVisits(y,m),dim=new Date(y,m,0).getDate();
+  const card=(kind,ic,bg,t,s,col)=>`<button class="acard" data-act="an" data-kind="${kind}"><span class="ic" style="background:${bg}">${ICONS[ic]}</span><b>${t}</b><small>${s}</small><span class="arr" style="color:${col}">→</span></button>`;
+  main.innerHTML=`<div class="period"><div class="pnav"><button data-act="mprev" aria-label="前の月">‹</button><span>${m}/1 〜 ${m}/${dim}</span><button data-act="mnext" aria-label="次の月">›</button></div>
+    <div class="nums"><div><div class="big red">${vs.length}</div><small class="muted">来店数</small></div><i></i><div><div class="big gold" style="font-size:${vs.length?30:38}px">¥${vs.reduce((a,v)=>a+(+v.amount||0),0).toLocaleString('ja-JP')}</div><small class="muted">売上</small></div></div></div>
+  <div class="sec"><svg viewBox="0 0 28 28" fill="currentColor"><circle cx="10" cy="9" r="4.5"/><path d="M1 23c0-5 4-8 9-8s9 3 9 8z"/><circle cx="20" cy="10" r="3.5"/><path d="M27 22c0-4-2.5-6.5-6.5-6.5-1 0-2 .2-2.8.6 2.4 1.7 3.6 3.6 4 5.9z"/></svg>顧客分析</div>
+  <div class="acards">${card('close','heart','var(--accent-soft)','親密度が高い順','関係性の高いお客様','var(--accent)')}${card('money','yen','var(--gold-soft)','お金が高い順','売上貢献度順','var(--gold)')}${card('wdgood','calok','var(--green-soft)','来店しやすい曜日','曜日別の傾向','var(--green)')}${card('wdbad','calng','var(--orange-soft)','来店しにくい曜日','避けやすい曜日','var(--orange)')}${card('lapsed','list','var(--accent-soft)','未来店リスト','30日以上未来店','var(--accent)')}</div>
+  <div class="sec"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12v3h3v3a5 5 0 0 1-5 5h-.3A5 5 0 0 1 13 16.5V19h3v2H8v-2h3v-2.5A5 5 0 0 1 8.3 14H8a5 5 0 0 1-5-5V6h3zm-1 5v1a3 3 0 0 0 2 2.8V8zm14 0h-2v3.8A3 3 0 0 0 19 9z"/></svg>ランキング TOP10</div>
+  <div class="seg" role="group" aria-label="期間" style="margin-bottom:10px">${[['month',`${m}月`],['year',`${y}年`],['all','全期間']].map(([k,l])=>`<button data-act="rankp" data-p="${k}" aria-pressed="${S.rankP===k}">${l}</button>`).join('')}</div>
+  <div class="rank">${rankHtml()}</div>`;
+}
+function rankHtml(){
+  const {y,m}=S.month;let rows;
+  if(S.rankP==='all')rows=[...D.customers.values()].map(c=>{const s=stats(c);return {c,total:s.total,count:s.count}});
+  else{const vs=S.rankP==='month'?monthVisits(y,m):[...D.visits.values()].filter(v=>v.date.startsWith(y+'-'));const mp=new Map();
+    for(const v of vs){const r=mp.get(v.cid)||{total:0,count:0};r.total+=+v.amount||0;r.count++;mp.set(v.cid,r)}
+    rows=[...mp].filter(([id])=>D.customers.has(id)).map(([id,r])=>({c:D.customers.get(id),...r}))}
+  rows=rows.filter(r=>r.total>0).sort((a,b)=>b.total-a.total).slice(0,10);
+  return rows.length?rows.map((r,i)=>`<div class="rrow" data-act="cust" data-id="${r.c.id}" role="button" tabindex="0"><span class="no">${i+1}</span><span class="pill">${esc(r.c.name)}</span><span class="c">${r.count}回</span><span class="v">${yen(r.total)}</span></div>`).join(''):'<p class="muted">この期間の記録はありません</p>';
+}
+
+/* ---------- sheets ---------- */
+const sheets=[];
+function openSheet(title,draw,{live=false,right=''}={}){
+  const el=document.createElement('div');el.className='sheet';
+  el.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="phead"><button class="x">閉じる</button><h2>${esc(title)}</h2><span class="pr"></span></div><div class="pbody"></div></div>`;
+  document.body.appendChild(el);
+  const s={el,body:$('.pbody',el),live,close(){el.remove();sheets.splice(sheets.indexOf(s),1)},setTitle(t){$('h2',el).textContent=t},right:$('.pr',el)};
+  s.draw=()=>draw(s.body,s);
+  $('.x',el).onclick=()=>s.close();
+  el.addEventListener('click',e=>{if(e.target===el)s.close()});
+  sheets.push(s);s.draw();return s;
+}
+function inlineConfirm(host,msg,yes,onYes){
+  const box=document.createElement('div');box.className='confirm';
+  box.innerHTML=`<div>${esc(msg)}</div><div class="btnrow"><button class="btn primary">${esc(yes)}</button><button class="btn">やめる</button></div>`;
+  const [a,b]=box.querySelectorAll('button');a.onclick=onYes;b.onclick=()=>{box.replaceWith(host)};
+  host.replaceWith(box);
+}
+
+/* customer detail */
+function openCustomer(id){
+  openSheet('お客様',(body,s)=>{
+    const c=D.customers.get(id);if(!c){s.close();return}
+    s.setTitle(c.name);
+    const st=stats(c),vs=visitsOf(id).slice().reverse();
+    const bd=c.birthday?(c.birthday.startsWith('0000')?`${+c.birthday.slice(5,7)}月${+c.birthday.slice(8)}日`:`${fmtD(c.birthday)}（${ageOf(c.birthday)}歳）`):'';
+    const info=[['ふりがな',c.kana],['ニックネーム',c.nick],['電話番号',c.phone],['メール',c.email],['誕生日',bd],['性別',c.gender],['住所',c.address],['メモ',c.memo]].filter(r=>r[1]);
+    body.innerHTML=`<div class="tiles"><div class="tile"><small>来店回数</small><b>${st.count}回</b></div><div class="tile"><small>合計金額</small><b>${yen(st.total)}</b></div><div class="tile"><small>平均単価</small><b>${yen(st.avg)}</b></div><div class="tile"><small>最終来店</small><b>${st.last?fmtD(st.last):'—'}</b>${st.last?`<small>${daysSince(st.last)}日前</small>`:''}</div></div>
+      ${info.length?`<dl class="info">${info.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}${k==='電話番号'?' <button class="btn sm" data-copy="'+esc(v)+'">コピー</button>':''}</dd>`).join('')}</dl>`:''}
+      ${c.legacy&&(c.legacy.count||c.legacy.total)?`<p class="hint">前のアプリから移した記録: 来店${+c.legacy.count||0}回・合計${yen(c.legacy.total)}${c.legacy.last?'（〜'+fmtD(c.legacy.last)+'）':''}</p>`:''}
+      <div class="btnrow"><button class="btn primary" id="cd-add">来店を記録</button><button class="btn" id="cd-edit">編集</button></div>
+      <h3>来店履歴（${vs.length}件）</h3>
+      <div class="hist">${vs.map(v=>`<div class="hrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span class="d">${fmtD(v.date)} (${wdOf(v.date)})</span><span class="s">${v.start?v.start+'〜 ':''}${fmtDur(v.dur)} ${'★'.repeat(v.rating||0)}</span><span class="a">${yen(v.amount)}</span>${v.memo||v.cat?`<span class="m">${esc([v.cat,v.memo].filter(Boolean).join('｜'))}</span>`:''}</div>`).join('')||'<p class="muted">まだ記録はありません</p>'}</div>
+      <div><button class="btn danger" id="cd-del">このお客様を削除</button></div>`;
+    $('#cd-add',body).onclick=()=>openVisitForm(null,{cid:id});
+    $('#cd-edit',body).onclick=()=>openCustomerForm(c);
+    $('#cd-del',body).onclick=e=>inlineConfirm(e.currentTarget,`${c.name}さんと来店履歴${vs.length}件を削除します。元に戻せません。`,'削除する',()=>{ensureRealFor(()=>{deleteCustomer(c)});s.close();toast('削除しました')});
+    body.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyText(b.dataset.copy));
+  },{live:true});
+}
+function ensureRealFor(fn){if(S.sample){ensureReal();refreshUI();return}fn()}
+function ageOf(b){const d=parseD(b),t=new Date();let a=t.getFullYear()-d.getFullYear();if(t.getMonth()<d.getMonth()||(t.getMonth()===d.getMonth()&&t.getDate()<d.getDate()))a--;return a}
+function copyText(t){try{navigator.clipboard.writeText(t).then(()=>toast('コピーしました'),()=>toast(t))}catch(e){toast(t)}}
+
+/* customer form */
+function openCustomerForm(c0){
+  const isNew=!c0;const c=c0?{...c0}:{id:newId(),name:'',created:todayStr()};
+  openSheet(isNew?'お客様を追加':'お客様を編集',(body,s)=>{
+    const f=(k,l,type='text',extra='')=>`<label class="field"><span>${l}</span><input id="cf-${k}" type="${type}" value="${esc(k==='birthday'&&c.birthday&&c.birthday.startsWith('0000')?'':c[k]||'')}" ${extra}></label>`;
+    body.innerHTML=`${f('name','名前（必須）','text','autocomplete="off"')}<div class="two">${f('kana','ふりがな')}${f('nick','ニックネーム')}</div>
+      <div class="two">${f('phone','電話番号','tel')}${f('birthday','誕生日','date')}</div>${f('email','メール','email')}
+      <label class="field"><span>性別</span><select id="cf-gender">${['','女性','男性','その他'].map(g=>`<option ${c.gender===g?'selected':''}>${g}</option>`).join('')}</select></label>
+      ${f('address','住所')}<label class="field"><span>メモ</span><textarea id="cf-memo">${esc(c.memo||'')}</textarea></label>
+      <p class="hint warn" id="cf-err" hidden></p><button class="btn primary" id="cf-save">保存する</button>`;
+    $('#cf-save',body).onclick=()=>{
+      const name=norm($('#cf-name',body).value);const err=$('#cf-err',body);
+      if(!name){err.textContent='名前を入力してください';err.hidden=false;return}
+      const dup=findByName(name);if(dup&&dup.id!==c.id){err.textContent=`「${name}」はすでに登録されています。別の書き方にしてください`;err.hidden=false;return}
+      ensureReal();
+      c.name=name;for(const k of ['kana','nick','phone','email','address'])c[k]=norm($('#cf-'+k,body).value);
+      const b=$('#cf-birthday',body).value;if(b||!(c.birthday||'').startsWith('0000'))c.birthday=b;
+      c.gender=$('#cf-gender',body).value;c.memo=$('#cf-memo',body).value.trim();
+      saveCustomer(c);s.close();toast('保存しました');if(isNew)openCustomer(c.id);
+    };
+  });
+}
+
+/* visit form */
+function openVisitForm(v0,preset={}){
+  const isNew=!v0;const v=v0?{...v0}:{id:newId(),cid:preset.cid||'',date:preset.date||todayStr(),start:'',dur:60,amount:'',rating:0,cat:'',memo:''};
+  if(!v.start&&isNew){const t=new Date();v.start=pad(t.getHours())+':'+(t.getMinutes()<30?'00':'30')}
+  let cid=v.cid,picking=!cid,quick=false;
+  const toMin=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m};
+  const toT=n=>pad(Math.floor(n/60)%24)+':'+pad(n%60);
+  openSheet(isNew?'来店を記録':'来店の記録',(body,s)=>{
+    if(!isNew&&!s.right.firstChild){s.right.innerHTML='<button class="btn sm" id="vf-del">削除</button>';
+      $('#vf-del',s.right).onclick=()=>{const host=$('#vf-delhost',body);host.scrollIntoView({block:'center'});inlineConfirm(host.firstElementChild,'この来店記録を削除します。元に戻せません。','削除する',()=>{deleteVisit(v0);s.close();toast('削除しました')})}}
+    const c=D.customers.get(cid);
+    const end=v.start?toT(toMin(v.start)+(v.dur||0)):'';
+    body.classList.add('vform');
+    body.innerHTML=`<div class="lgroup">
+        <button class="lrow" id="vf-who"><span>来店者</span><span class="rv">${c?`<span class="pill">${esc(c.name)}</span>`:'<span class="muted">選んでください</span>'}</span><span class="chev">›</span></button>
+        ${picking?`<div class="picker"><input id="vf-name" type="search" autocomplete="off" placeholder="名前・ふりがなで検索、または新しい名前を入力" value=""><div class="sugg" id="vf-sugg"></div></div>`:''}
+        <button class="lrow" id="vf-memos" ${c?'':'disabled'}><span>来店者とのやりとり（メモ一覧）</span><span class="rv"></span><span class="chev">›</span></button>
+      </div>
+      <label class="qt"><span>時間クイック入力表示</span><input type="checkbox" id="vf-quick" class="sw" ${quick?'checked':''}></label>
+      <div class="lgroup">
+        <div class="lrow"><span>開始時間</span><span class="rv"><input id="vf-date" type="date" value="${v.date}"><input id="vf-start" type="time" value="${v.start||''}"></span></div>
+        <div class="lrow"><span>終了時間</span><span class="rv"><input id="vf-end" type="time" value="${end}"></span></div>
+        ${quick?`<div class="quick">${[30,60,90,120,150,180].map(n=>`<button type="button" data-q="${n}" class="${v.dur===n?'on':''}">${n%60?(n>=60?Math.floor(n/60)+'時間':'')+'30分':n/60+'時間'}</button>`).join('')}</div>`:''}
+        <div class="lrow"><span>滞在時間</span><span class="rv" id="vf-dur">${fmtDur(v.dur)}</span></div>
+        <label class="lrow"><span>使ったお金</span><span class="rv"><input id="vf-amount" type="text" inputmode="numeric" placeholder="0" value="${v.amount===''?'':(+v.amount).toLocaleString('ja-JP')}"><span>円</span></span></label>
+        <label class="lrow"><span>カテゴリ</span><span class="rv"><input id="vf-cat" type="text" placeholder="例 カット・カラー" value="${esc(v.cat||'')}"></span></label>
+      </div>
+      <div class="rate"><span>評価</span><div class="bigstars" id="vf-stars">${[1,2,3,4,5].map(n=>`<button type="button" data-n="${n}" class="${n<=v.rating?'on':''}" aria-label="評価${n}"><svg viewBox="0 0 24 24"><path d="M12 1.8l3 6.4 7 .9-5.1 4.8 1.3 6.9L12 17.4l-6.2 3.4 1.3-6.9L2 9.1l7-.9z"/></svg></button>`).join('')}</div></div>
+      <div class="mlabel">メモ</div>
+      <textarea id="vf-memo" class="memo" placeholder="※よかったこと、悪かったこと、気がついたことなど、どんどん書いておきましょう">${esc(v.memo||'')}</textarea>
+      <p class="hint warn" id="vf-err" hidden></p>
+      <div style="padding:0 16px"><button class="btn primary" id="vf-save" style="width:100%">保存する</button></div>
+      <div id="vf-delhost" style="padding:0 16px"><span></span></div>`;
+    const keep=()=>{v.date=$('#vf-date',body).value;v.start=$('#vf-start',body).value;v.amount=$('#vf-amount',body).value===''?'':pNum($('#vf-amount',body).value);v.cat=$('#vf-cat',body).value;v.memo=$('#vf-memo',body).value};
+    const showDur=()=>{$('#vf-dur',body).textContent=fmtDur(v.dur);body.querySelectorAll('.quick button').forEach(b=>b.classList.toggle('on',+b.dataset.q===v.dur))};
+    $('#vf-who',body).onclick=()=>{keep();picking=!picking;s.draw();const i=$('#vf-name',body);if(i)i.focus()};
+    $('#vf-memos',body).onclick=()=>{if(cid)openMemos(cid)};
+    $('#vf-quick',body).onchange=e=>{keep();quick=e.target.checked;s.draw()};
+    $('#vf-start',body).onchange=()=>{v.start=$('#vf-start',body).value;if(v.start)$('#vf-end',body).value=toT(toMin(v.start)+v.dur)};
+    $('#vf-end',body).onchange=()=>{const st=toMin($('#vf-start',body).value),en=toMin($('#vf-end',body).value);if(st!=null&&en!=null){v.dur=en>=st?en-st:en+1440-st;showDur()}};
+    body.querySelectorAll('.quick button').forEach(b=>b.onclick=()=>{v.dur=+b.dataset.q;const st=toMin($('#vf-start',body).value);if(st!=null)$('#vf-end',body).value=toT(st+v.dur);showDur()});
+    const am=$('#vf-amount',body);am.onfocus=()=>{am.value=am.value.replace(/,/g,'')};am.onblur=()=>{if(am.value!=='')am.value=pNum(am.value).toLocaleString('ja-JP')};
+    $('#vf-stars',body).onclick=e=>{const b=e.target.closest('button');if(!b)return;const n=+b.dataset.n;v.rating=v.rating===n?0:n;body.querySelectorAll('#vf-stars button').forEach(x=>x.classList.toggle('on',+x.dataset.n<=v.rating))};
+    const nameI=$('#vf-name',body);
+    if(nameI){const sugg=$('#vf-sugg',body);
+      const upd=()=>{const raw=norm(nameI.value),q=nameKey(raw);
+        const m=q?[...D.customers.values()].filter(c=>nameKey(c.name).includes(q)||nameKey(c.kana).includes(q)).slice(0,8):[];
+        const exact=m.some(c=>nameKey(c.name)===q);
+        sugg.innerHTML=m.map(c=>`<button type="button" data-id="${c.id}">${esc(c.name)}<small>${stats(c).last?'最終 '+fmtD(stats(c).last):''}</small></button>`).join('')+(q&&!exact?`<button type="button" data-new="1">＋「${esc(raw)}」を新しいお客様として登録<small></small></button>`:'')};
+      nameI.oninput=upd;
+      sugg.onclick=e=>{const b=e.target.closest('button');if(!b)return;keep();
+        if(b.dataset.new){const name=norm(nameI.value);ensureReal();let nc=findByName(name);if(!nc){nc={id:newId(),name,created:todayStr()};saveCustomer(nc)}cid=nc.id}else cid=b.dataset.id;
+        picking=false;s.draw()}}
+    $('#vf-save',body).onclick=()=>{
+      keep();const err=$('#vf-err',body);
+      const cust=D.customers.get(cid);
+      if(!cust){err.textContent='来店者を選んでください';err.hidden=false;picking=true;return}
+      if(!v.date){err.textContent='来店日を選んでください';err.hidden=false;return}
+      const wasSample=S.sample;const name=cust.name;ensureReal();
+      let cc=wasSample?findByName(name):cust;if(!cc){cc={id:newId(),name,created:todayStr()};saveCustomer(cc)}
+      const nv={...v,cid:cc.id,amount:+v.amount||0,cat:norm(v.cat),memo:String(v.memo).trim()};
+      if(wasSample)nv.id=newId();
+      saveVisit(nv,v0&&!wasSample?v0.date:null);s.close();toast('保存しました');
+    };
+  });
+}
+function openMemos(cid){
+  const c=D.customers.get(cid);if(!c)return;
+  openSheet(`${c.name}とのやりとり`,(body)=>{
+    const vs=visitsOf(cid).filter(v=>v.memo).slice().reverse();
+    body.innerHTML=(c.memo?`<div class="hrow" style="cursor:default"><span class="d">お客様メモ</span><span></span><span></span><span class="m">${esc(c.memo)}</span></div>`:'')+
+      `<div class="hist">${vs.map(v=>`<div class="hrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span class="d">${fmtD(v.date)} (${wdOf(v.date)})</span><span class="s">${esc(v.cat||'')}</span><span class="a">${yen(v.amount)}</span><span class="m">${esc(v.memo)}</span></div>`).join('')||'<p class="muted">まだメモはありません</p>'}</div>`;
+  },{live:true});
+}
+/* day sheet */
+function openDay(ds){
+  openSheet(`${fmtD(ds)} (${wdOf(ds)})`,(body)=>{
+    const a=[...D.visits.values()].filter(v=>v.date===ds).sort(cmpVisit);
+    body.innerHTML=`<div class="sumline"><span class="muted">${a.length}件</span><strong>${yen(a.reduce((s,v)=>s+(+v.amount||0),0))}</strong></div>
+      <div class="hist">${a.map(v=>`<div class="hrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span class="d">${esc(cname(v.cid))}</span><span class="s">${v.start?v.start+'〜 ':''}${fmtDur(v.dur)}</span><span class="a">${yen(v.amount)}</span>${v.memo?`<span class="m">${esc(v.memo)}</span>`:''}</div>`).join('')||'<p class="muted">この日の記録はありません</p>'}</div>
+      <button class="btn primary" id="dy-add">この日に来店を記録</button>`;
+    $('#dy-add',body).onclick=()=>openVisitForm(null,{date:ds});
+  },{live:true});
+}
+
+/* analysis lists */
+function customerList(title,rows,valFn,sub){
+  openSheet(title,(body)=>{
+    body.innerHTML=(sub?`<p class="hint">${sub}</p>`:'')+`<div class="rank">${rows().map((c,i)=>`<div class="rrow" data-act="cust" data-id="${c.id}" role="button" tabindex="0"><span class="no">${i+1}</span><span class="pill">${esc(c.name)}</span>${valFn(c)}</div>`).join('')||'<p class="muted">該当するお客様はいません</p>'}</div>`;
+  },{live:true});
+}
+function openAnalysis(kind){
+  const all=()=>[...D.customers.values()];
+  if(kind==='close')customerList('親密度が高い順',()=>all().filter(c=>stats(c).count).sort((a,b)=>stats(b).count-stats(a).count||(stats(b).last>stats(a).last?1:-1)).slice(0,100),c=>`<span class="c">最終 ${fmtD(stats(c).last)}</span><span class="v">${stats(c).count}回</span>`,'来店回数の多い順（上位100名）');
+  else if(kind==='money')customerList('お金が高い順',()=>all().filter(c=>stats(c).total).sort((a,b)=>stats(b).total-stats(a).total).slice(0,100),c=>`<span class="c">${stats(c).count}回</span><span class="v">${yen(stats(c).total)}</span>`,'合計金額の多い順（上位100名）');
+  else if(kind==='lapsed')customerList('未来店リスト',()=>all().filter(c=>stats(c).last&&daysSince(stats(c).last)>=30).sort((a,b)=>stats(a).last<stats(b).last?1:-1),c=>`<span class="c">${fmtD(stats(c).last)}</span><span class="v">${daysSince(stats(c).last)}日</span>`,'最後の来店から30日以上たったお客様（最近来た順）');
+  else{
+    openSheet(kind==='wdgood'?'来店しやすい曜日':'来店しにくい曜日',(body)=>{
+      const cnt=Array(7).fill(0),amt=Array(7).fill(0);for(const v of D.visits.values()){const d=parseD(v.date).getDay();cnt[d]++;amt[d]+=+v.amount||0}
+      const mx=Math.max(1,...cnt);const order=[0,1,2,3,4,5,6].sort((a,b)=>kind==='wdgood'?cnt[b]-cnt[a]:cnt[a]-cnt[b]);
+      body.innerHTML=`<p class="hint">これまでの全来店記録（${D.visits.size}件）を曜日ごとに数えています。</p><div class="bars">${order.map(d=>`<div class="bar"><span class="lab ${d===0?'sun':''}" style="${d===0?'color:var(--sun)':d===6?'color:var(--sat)':''}">${WD[d]}</span><span class="t"><i style="width:${cnt[d]/mx*100}%"></i></span><span class="val">${cnt[d]}件・平均${yen(cnt[d]?amt[d]/cnt[d]:0)}</span></div>`).join('')}</div>`;
+    },{live:true});
+  }
+}
+function openBirthdays(){
+  const {m}=S.month;
+  customerList(`${m}月の誕生日`,()=>[...D.customers.values()].filter(c=>c.birthday&&+c.birthday.slice(5,7)===m).sort((a,b)=>a.birthday.slice(8)<b.birthday.slice(8)?-1:1),
+    c=>`<span class="c">${c.birthday.startsWith('0000')?'':ageOf(c.birthday)+1+'歳に'}</span><span class="v">${+c.birthday.slice(8)}日</span>`,'誕生日が登録されているお客様だけが表示されます');
+}
+function openAllStats(){
+  openSheet('全顧客集計',(body)=>{
+    const cs=[...D.customers.values()];let tc=0,tt=0;cs.forEach(c=>{const s=stats(c);tc+=s.count;tt+=s.total});
+    const y=new Date().getFullYear();const newThis=cs.filter(c=>{const f=stats(c).first;return f&&f.startsWith(y+'-')}).length;
+    body.innerHTML=`<div class="tiles"><div class="tile"><small>お客様</small><b>${cs.length}人</b></div><div class="tile"><small>延べ来店</small><b>${tc.toLocaleString()}回</b></div><div class="tile"><small>総売上</small><b>${yen(tt)}</b></div><div class="tile"><small>平均単価</small><b>${yen(tc?tt/tc:0)}</b></div><div class="tile"><small>${y}年の新規</small><b>${newThis}人</b></div><div class="tile"><small>リピート率</small><b>${cs.length?Math.round(cs.filter(c=>stats(c).count>=2).length/cs.length*100):0}%</b><small>2回以上来店</small></div></div><p class="hint">前のアプリから移した来店回数・金額も含みます。</p>`;
+  },{live:true});
+}
+function openYearCmp(){
+  openSheet('年比較',(body)=>{
+    const ys={};for(const v of D.visits.values()){const y=v.date.slice(0,4);const r=ys[y]||(ys[y]={c:0,a:0,u:new Set()});r.c++;r.a+=+v.amount||0;r.u.add(v.cid)}
+    const keys=Object.keys(ys).sort().reverse();
+    body.innerHTML=keys.length?`<div class="tblwrap" style="margin:0"><table class="sum"><thead><tr><th>年</th><th>総額</th><th>件数</th><th>平均額</th><th>人数</th></tr></thead><tbody>${keys.map(k=>{const r=ys[k];return `<tr><td>${k}年</td><td>${yen(r.a)}</td><td>${r.c}件</td><td>${yen(r.c?r.a/r.c:0)}</td><td>${r.u.size}人</td></tr>`}).join('')}</tbody></table></div><p class="hint">来店記録をもとに集計しています。</p>`:'<p class="muted">来店記録がありません</p>';
+  },{live:true});
+}
+
+/* ---------- settings / export ---------- */
+function openSettings(){
+  openSheet('データ管理',(body,s)=>{
+    body.innerHTML=`<div class="tiles"><div class="tile"><small>お客様</small><b>${S.sample?0:D.customers.size}人</b></div><div class="tile"><small>来店記録</small><b>${S.sample?0:D.visits.size}件</b></div></div>
+      <p class="hint">${Store.mode==='db'?'データはあなたのアカウント専用の場所に保存されます。このページを他の人に共有しても、あなたのお客様情報は見えません。':'この端末の中にだけ保存しています。別の端末からは見えません。機種変更や万一に備えて、ときどきCSVで書き出しておいてください。'}</p>
+      <button class="btn primary" id="st-imp">CSVを取り込む</button>
+      <div class="btnrow"><button class="btn" id="st-exc">顧客をCSVで書き出す</button><button class="btn" id="st-exv">来店履歴をCSVで書き出す</button></div>
+      <div style="margin-top:12px"><button class="btn danger" id="st-wipe">すべてのデータを削除</button></div>`;
+    $('#st-imp',body).onclick=()=>openImport();
+    $('#st-exc',body).onclick=()=>exportCustomers();
+    $('#st-exv',body).onclick=()=>exportVisits();
+    $('#st-wipe',body).onclick=e=>inlineConfirm(e.currentTarget,'お客様と来店記録をすべて削除します。元に戻せません。先にCSVで書き出しておくと安心です。','すべて削除する',async()=>{
+      if(S.sample){ensureReal();refreshUI();s.close();return}
+      try{await Store.wipe();toast('すべて削除しました')}catch(e){toast(dbMsg(e))}refreshUI();s.close()});
+  },{live:true});
+}
+function toCSV(rows){return '﻿'+rows.map(r=>r.map(x=>{x=String(x??'');return /[",\n\r]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}).join(',')).join('\r\n')}
+const stamp=()=>todayStr().replace(/-/g,'');
+function exportCustomers(){
+  const rows=[['名前','ふりがな','ニックネーム','電話番号','メール','誕生日','性別','住所','メモ','初回来店日','最終来店日','来店回数','合計金額']];
+  for(const c of D.customers.values()){const s=stats(c);rows.push([c.name,c.kana,c.nick,c.phone,c.email,c.birthday?(c.birthday.startsWith('0000')?c.birthday.slice(5).replace('-','/'):fmtD(c.birthday)):'',c.gender,c.address,c.memo,fmtD(s.first),fmtD(s.last),s.count,s.total])}
+  saveFile(`顧客一覧_${stamp()}.csv`,toCSV(rows));
+}
+function exportVisits(){
+  const rows=[['名前','来店日','開始時刻','滞在時間(分)','金額','評価','カテゴリ','メモ']];
+  for(const v of [...D.visits.values()].sort(cmpVisit))rows.push([cname(v.cid),fmtD(v.date),v.start,v.dur,v.amount,v.rating,v.cat,v.memo]);
+  saveFile(`来店履歴_${stamp()}.csv`,toCSV(rows));
+}
+async function saveFile(name,data){
+  const dl=await cap('downloads');
+  if(dl){try{await dl.save({filename:name,data});toast('書き出しました');return}catch(e){if(e&&(e.code==='declined'))return;if(e&&e.code==='rate_limited'){toast('少し待ってからもう一度押してください');return}}}
+  if(!window.claude){
+    try{const f=new File([data],name,{type:'text/csv'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==='AbortError')return}
+    try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast('書き出しました');return}catch(e){}}
+  openSheet(name,(body)=>{body.innerHTML=`<p class="hint">この画面ではファイルを保存できないため、内容を表示しています。全部コピーして、メモ帳などに貼り付けて「.csv」で保存してください。</p><textarea class="out" readonly>${esc(data.replace(/^﻿/,''))}</textarea><button class="btn primary" id="cp">全部コピー</button>`;
+    $('#cp',body).onclick=()=>{const t=$('textarea',body);t.select();try{navigator.clipboard.writeText(t.value).then(()=>toast('コピーしました'),()=>toast('選択した状態です。コピーしてください'))}catch(e){}}});
+}
+
+/* ---------- CSV import ---------- */
+function parseCSV(text){
+  text=text.replace(/^﻿/,'');const first=text.split(/\r?\n/,1)[0]||'';
+  const delim=first.split('\t').length>first.split(',').length?'\t':',';
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){f+='"';i++}else q=false}else f+=ch}
+    else if(ch==='"'&&f==='')q=true;
+    else if(ch===delim){row.push(f);f=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(f);f='';rows.push(row);row=[]}
+    else f+=ch}
+  if(f!==''||row.length){row.push(f);rows.push(row)}
+  return rows.filter(r=>r.some(x=>x.trim()!==''));
+}
+async function readFile(file){const buf=await file.arrayBuffer();try{return new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){try{return new TextDecoder('shift_jis').decode(buf)}catch(e2){return new TextDecoder().decode(buf)}}}
+function pDate(s){s=norm(s);if(!s)return '';let m=s.match(/(\d{4})\s*[\/\-年.]\s*(\d{1,2})\s*[\/\-月.]\s*(\d{1,2})/);if(m)return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;m=s.match(/^(\d{4})(\d{2})(\d{2})$/);if(m)return `${m[1]}-${m[2]}-${m[3]}`;
+  m=s.match(/^(\d{5})(\.\d+)?$/);if(m){const d=new Date(Date.UTC(1899,11,30)+(+m[1])*864e5);return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`}return ''}
+function pBirthday(s){const d=pDate(s);if(d)return d;const m=norm(s).match(/^(\d{1,2})\s*[\/\-月]\s*(\d{1,2})/);return m?`0000-${pad(m[1])}-${pad(m[2])}`:''}
+function pTime(s){const m=norm(s).match(/(\d{1,2})\s*[:時]\s*(\d{2})/);return m&&+m[1]<24?`${pad(m[1])}:${m[2]}`:''}
+function pDur(s){s=norm(s);if(!s)return 0;let m=s.match(/(\d+)\s*時間\s*(?:(\d+)\s*分)?/);if(m)return +m[1]*60+(+m[2]||0);m=s.match(/^(\d+):(\d{2})/);if(m)return +m[1]*60+ +m[2];m=s.match(/(\d+)\s*分/);if(m)return +m[1];const n=parseFloat(s);return isNaN(n)?0:Math.round(n)}
+function pNum(s){const n=parseFloat(norm(s).replace(/[,円¥￥\s]/g,''));return isNaN(n)?0:n}
+const CF=[['','取り込まない'],['name','名前'],['kana','ふりがな'],['nick','ニックネーム'],['phone','電話番号'],['email','メール'],['birthday','誕生日'],['gender','性別'],['address','住所'],['memo','メモ'],['first','初回来店日'],['last','最終来店日'],['count','来店回数'],['total','合計金額']];
+const VF=[['','取り込まない'],['name','名前'],['date','来店日'],['start','開始時刻'],['end','終了時刻'],['dur','滞在時間'],['amount','金額'],['rating','評価'],['cat','カテゴリ'],['memo','メモ']];
+const KW={last:/最終/,first:/初回/,count:/回数|来店数/,total:/合計|総額|累計|total/i,birthday:/誕生|生年月日|birth/i,kana:/ふりがな|フリガナ|カナ|よみ|読み/,nick:/ニックネーム|愛称|あだ名/,
+  name:/名前|氏名|顧客名|表示名|お客様|来店者|^name$/i,phone:/電話|tel|携帯|phone/i,email:/メール|mail/i,gender:/性別/,address:/住所|address/i,memo:/メモ|備考|カルテ|コメント|note|memo/i,
+  rating:/評価|rating/i,dur:/滞在|所要|施術時間|^時間|分\)?$/,start:/開始|start/i,end:/終了|end/i,date:/日付|来店日|日時|^date$/i,amount:/金額|お金|売上|料金|支払|会計|price|amount/i,cat:/カテゴリ|メニュー|category/i};
+const ORDER={customers:['last','first','count','total','birthday','kana','nick','name','phone','email','gender','address','memo'],visits:['rating','end','dur','start','date','amount','cat','memo','name']};
+function guessMap(head,type){const used=new Set();return head.map(h=>{h=norm(h);for(const k of ORDER[type]){if(!used.has(k)&&KW[k].test(h)){used.add(k);return k}}return ''})}
+function guessType(head){const h=head.map(norm).join('|');return /来店回数|最終来店|合計金額/.test(h)?'customers':(/日付|来店日|日時|開始/.test(h)&&/金額|お金|売上|料金/.test(h))?'visits':'customers'}
+
+function openImport(){
+  const st={step:'pick',type:'customers',rows:null,header:true,map:[],fname:'',res:null,left:0};
+  openSheet('CSVを取り込む',(body,s)=>{
+    if(st.step==='pick'){
+      body.innerHTML=`<p class="hint">今お使いのアプリで「CSV書き出し」をして、そのファイルを選んでください。お客様の一覧と来店履歴が別々のファイルなら、1つずつ取り込めます（お客様の一覧を先に取り込むのがおすすめです）。</p>
+        <label class="drop" for="im-file"><b>CSVファイルを選ぶ</b><span class="hint">.csv / .txt（Shift_JIS・UTF-8どちらも可）</span><span class="btn primary">ファイルを選ぶ</span></label>
+        <input id="im-file" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" hidden>
+        <p class="hint warn" id="im-err" hidden></p>`;
+      $('#im-file',body).onchange=async e=>{const file=e.target.files[0];if(!file)return;
+        try{const rows=parseCSV(await readFile(file));if(rows.length<1)throw 0;
+          st.rows=rows;st.fname=file.name;st.type=guessType(rows[0]);st.map=guessMap(rows[0],st.type);
+          st.header=st.map.some(Boolean);if(!st.header)st.map=rows[0].map(()=>'');st.step='map';s.draw()}
+        catch(err){const el=$('#im-err',body);el.textContent='このファイルを読み込めませんでした。CSV形式のファイルか確認してください';el.hidden=false}};
+    }else if(st.step==='map'){
+      const head=st.rows[0],data=st.header?st.rows.slice(1):st.rows,F=st.type==='customers'?CF:VF;
+      const need=st.type==='customers'?['name']:['name',st.map.includes('start')?'start':'date'];const missing=need.filter(k=>!st.map.includes(k));
+      body.innerHTML=`<p class="hint">${esc(st.fname)}：${data.length}行</p>
+        <div class="field"><span>このファイルの中身</span><div class="seg"><button data-t="customers" aria-pressed="${st.type==='customers'}">お客様の一覧</button><button data-t="visits" aria-pressed="${st.type==='visits'}">来店履歴</button></div></div>
+        <p class="hint">${st.type==='customers'?'1行が1人のお客様のファイルです。来店回数・合計金額・最終来店日の列があれば、それも引き継ぎます。':'1行が1回の来店のファイルです。名前が一致するお客様にまとめ、いないお客様は自動で追加します。'}</p>
+        <label class="field" style="grid-template-columns:auto 1fr;align-items:center;gap:10px"><input type="checkbox" id="im-head" ${st.header?'checked':''} style="width:20px;height:20px"><span style="font-size:14px;color:var(--fg)">1行目は見出し（項目名）</span></label>
+        <div class="field"><span>それぞれの列を、どの項目として取り込むか選んでください</span></div>
+        <div class="maplist">${head.map((h,i)=>`<div class="mapitem"><span class="h">${st.header?esc(h)||'（見出しなし）':i+1+'列目'}</span><span class="ex">例: ${esc(data.slice(0,3).map(r=>r[i]||'').filter(Boolean).join(' / ')||'（空）')}</span><select data-i="${i}" aria-label="${esc(h)}の取り込み先">${F.map(([k,l])=>`<option value="${k}" ${st.map[i]===k?'selected':''}>${l}</option>`).join('')}</select></div>`).join('')}</div>
+        ${missing.length?`<p class="hint warn">「${missing.map(k=>F.find(f=>f[0]===k)[1]).join('」「')}」にあたる列を選んでください。</p>`:''}
+        <button class="btn primary" id="im-go" ${missing.length?'disabled':''}>${data.length}行を取り込む</button>
+        <button class="btn" id="im-back">別のファイルを選ぶ</button>`;
+      body.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{st.type=b.dataset.t;st.map=st.header?guessMap(head,st.type):head.map(()=>'');s.draw()});
+      $('#im-head',body).onchange=e=>{st.header=e.target.checked;st.map=st.header?guessMap(head,st.type):head.map(()=>'');s.draw()};
+      body.querySelectorAll('select[data-i]').forEach(sel=>sel.onchange=()=>{const k=sel.value;if(k)st.map=st.map.map(x=>x===k?'':x);st.map[+sel.dataset.i]=k;s.draw()});
+      $('#im-back',body).onclick=()=>{st.step='pick';s.draw()};
+      $('#im-go',body).onclick=()=>{st.res=runImport(st);st.step='done';st.left=Store.dirty.size;
+        Store.onProgress=n=>{st.left=n;if(st.step==='done'&&document.body.contains(s.el))s.draw();if(!n)Store.onProgress=null};s.draw()};
+    }else{
+      const r=st.res;
+      body.innerHTML=`<div class="result"><div><span>新しく追加したお客様</span><b>${r.newC}人</b></div><div><span>情報を更新したお客様</span><b>${r.updC}人</b></div>${st.type==='visits'?`<div><span>取り込んだ来店記録</span><b>${r.newV}件</b></div><div><span>取り込み済みのため飛ばした記録</span><b>${r.dupV}件</b></div>`:''}<div><span>名前などが空で飛ばした行</span><b>${r.skip}行</b></div></div>
+        <p class="hint">${Store.mode==='db'?(st.left?`保存しています…（残り${st.left}）。このまま開いておいてください。`:'保存が完了しました。'):'この端末に保存しました。'}</p>
+        <div class="btnrow"><button class="btn primary" id="im-more">続けて別のCSVを取り込む</button><button class="btn" id="im-close">閉じる</button></div>`;
+      $('#im-more',body).onclick=()=>{st.step='pick';s.draw()};$('#im-close',body).onclick=()=>s.close();
+    }
+  });
+}
+function runImport(st){
+  ensureReal();
+  const res={newC:0,updC:0,newV:0,dupV:0,skip:0};
+  const idx=new Map();for(const c of D.customers.values())idx.set(nameKey(c.name),c);
+  const rows=st.header?st.rows.slice(1):st.rows;const col=k=>st.map.indexOf(k);
+  const get=(r,k)=>{const i=col(k);return i<0?'':(r[i]??'')};
+  const getC=name=>{let c=idx.get(nameKey(name));if(!c){c={id:newId(),name,created:todayStr()};idx.set(nameKey(name),c);D.customers.set(c.id,c);res.newC++;c._n=1}return c};
+  const touched=new Set();
+  if(st.type==='customers'){
+    for(const r of rows){const name=norm(get(r,'name'));if(!name){res.skip++;continue}
+      const c=getC(name);if(!c._n&&!touched.has(c.id))res.updC++;touched.add(c.id);
+      for(const k of ['kana','nick','phone','email','gender','address']){const v=norm(get(r,k));if(v)c[k]=v}
+      const memo=String(get(r,'memo')).trim();if(memo&&!(c.memo||'').includes(memo))c.memo=c.memo?c.memo+'\n'+memo:memo;
+      const b=pBirthday(get(r,'birthday'));if(b)c.birthday=b;
+      const L={...(c.legacy||{})};let has=false;
+      if(col('first')>=0){const v=pDate(get(r,'first'));if(v){L.first=v;has=true}}
+      if(col('last')>=0){const v=pDate(get(r,'last'));if(v){L.last=v;has=true}}
+      if(col('count')>=0&&norm(get(r,'count'))!==''){L.count=pNum(get(r,'count'));has=true}
+      if(col('total')>=0&&norm(get(r,'total'))!==''){L.total=pNum(get(r,'total'));has=true}
+      if(has)c.legacy=L;
+      Store.dirty.add(Store.cb(c.id));
+    }
+  }else{
+    const keys=new Set([...D.visits.values()].map(v=>`${v.cid}|${v.date}|${v.start||''}|${v.amount}`));
+    const dateCol=col('date');
+    for(const r of rows){const date=pDate(get(r,'date'))||pDate(get(r,'start'));const name=norm(get(r,'name'))||(date?'（名前なし）':'');if(!name||!date){res.skip++;continue}
+      const c=getC(name);if(c._n)Store.dirty.add(Store.cb(c.id));
+      const start=col('start')>=0?pTime(get(r,'start')):(dateCol>=0?pTime(r[dateCol]||''):'');
+      const v={id:newId()+res.newV,cid:c.id,date,start,dur:col('dur')>=0?pDur(get(r,'dur')):(col('end')>=0&&start&&pTime(get(r,'end'))?((t=>{const [a,b]=start.split(':').map(Number),[c,d]=t.split(':').map(Number);return ((c*60+d)-(a*60+b)+1440)%1440})(pTime(get(r,'end')))):60),amount:pNum(get(r,'amount')),rating:Math.max(0,Math.min(5,Math.round(pNum(get(r,'rating'))))),cat:norm(get(r,'cat')),memo:String(get(r,'memo')).trim()};
+      const k=`${v.cid}|${v.date}|${v.start}|${v.amount}`;if(keys.has(k)){res.dupV++;continue}
+      D.visits.set(v.id,v);res.newV++;Store.dirty.add(Store.vb(v));
+    }
+  }
+  for(const c of D.customers.values())delete c._n;
+  D.ver++;Store.schedule();refreshUI();
+  return res;
+}
+
+/* ---------- events ---------- */
+const shiftM=d=>{let {y,m}=S.month;m+=d;if(m<1){m=12;y--}if(m>12){m=1;y++}S.month={y,m};render()};
+const ACT={
+  tab:t=>{S.tab=t.dataset.tab;render();$('#main').scrollTop=0},
+  mprev:()=>shiftM(-1),mnext:()=>shiftM(1),mnow:()=>{S.month={y:new Date().getFullYear(),m:new Date().getMonth()+1};render()},
+  yprev:()=>{S.year--;render()},ynext:()=>{S.year++;render()},ynow:()=>{S.year=new Date().getFullYear();render()},
+  settings:()=>openSettings(),newVisit:()=>openVisitForm(null,{}),newCustomer:()=>openCustomerForm(null),bdays:()=>openBirthdays(),
+  cust:t=>openCustomer(t.dataset.id),visit:t=>{const v=D.visits.get(t.dataset.id);if(v)openVisitForm(v)},day:t=>openDay(t.dataset.date),
+  sort:t=>{const k=t.dataset.key;S.sort=S.sort.key===k?{key:k,dir:-S.sort.dir}:{key:k,dir:k==='name'?1:-1};render()},
+  moreC:()=>{S.limit+=300;drawClist()},clearQ:()=>{S.q='';render()},
+  calmode:t=>{S.calMode=t.dataset.mode;render()},calsize:t=>{S.calSize=+t.dataset.size;render()},
+  metric:t=>{S.metric=t.dataset.m;render()},rankp:t=>{S.rankP=t.dataset.p;render()},an:t=>openAnalysis(t.dataset.kind),
+  allstats:()=>openAllStats(),yearcmp:()=>openYearCmp(),import:()=>openImport(),
+  sample:()=>{loadSample();render()},clearSample:()=>{ensureReal();render()}
+};
+document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=ACT[t.dataset.act];if(f){e.preventDefault();f(t,e)}});
+document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-act][role="button"]')){e.preventDefault();e.target.click()}
+  if(e.key==='Escape'&&sheets.length)sheets[sheets.length-1].close()});
+
+/* ---------- boot ---------- */
+(async()=>{
+  await Store.init();
+  if(!D.customers.size&&!D.visits.size)loadSample();
+  S.ready=true;render();
+})();
+</script>
+
+<script>if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(()=>{})}</script>
+</body></html>
