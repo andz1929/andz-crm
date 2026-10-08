@@ -234,6 +234,27 @@ textarea.memo{width:100%;min-height:140px;background:var(--card2);border:0;borde
 textarea.memo::placeholder{color:var(--muted)}
 .vform .hint{padding:0 16px}
 .phead .pr{justify-self:end}
+.photos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:0 16px}
+.vform .photos{padding:0 16px 4px}
+.ph{position:relative;display:block;aspect-ratio:1;border-radius:9px;overflow:hidden;background:var(--card)}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph small{position:absolute;left:0;right:0;bottom:0;font-size:10px;padding:2px 4px;background:rgba(0,0,0,.55);color:#fff;text-align:left}
+.ph.missing::after{content:"なし";position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:11px}
+.photos.gal{padding:0}
+.addph{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:9px;display:grid;place-items:center;align-content:center;gap:4px;color:var(--muted);font-size:11px;cursor:pointer;text-align:center}
+.addph svg{width:28px;height:28px;color:var(--fg)}
+.pmark svg{width:13px;height:13px;vertical-align:-2px;margin-right:4px;color:var(--muted)}
+.pmark{font-style:normal}
+svg.ic{width:13px;height:13px;vertical-align:-2px}
+.viewer{position:fixed;inset:0;background:#000;z-index:35;display:flex;flex-direction:column;padding:var(--sat-top) 0 var(--sat-bottom)}
+.vtop{display:grid;grid-template-columns:5em 1fr 5em;align-items:center;padding:10px 12px;color:#fff;font-size:14px;text-align:center}
+.vtop button{color:#fff;font-weight:600;padding:6px}.vtop .vdel{color:var(--sun);justify-self:end}.vtop .vx{justify-self:start}
+.vimg{flex:1;min-height:0;display:grid;place-items:center}
+.vimg img{max-width:100%;max-height:100%;object-fit:contain}
+.vnav{position:absolute;inset:50% 0 auto 0;display:flex;justify-content:space-between;pointer-events:none;padding:0 6px}
+.vnav button{pointer-events:auto;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:26px}
+.vconfirm{position:absolute;left:12px;right:12px;bottom:calc(16px + var(--sat-bottom));background:var(--surface);border-radius:12px;padding:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--fg)}
+.vconfirm span{flex:1 1 100%}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#f3f3f5;color:#111;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:40;max-width:calc(100% - 32px);text-align:center}
 #savechip{position:fixed;top:calc(8px + var(--sat-top));right:12px;background:var(--card);color:var(--muted);font-size:11px;padding:4px 10px;border-radius:999px;z-index:30}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
@@ -307,10 +328,49 @@ function findByName(name){const k=nameKey(name);for(const c of D.customers.value
 
 /* ---------- storage ---------- */
 const IDB={db:null,
-  open(){return new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('andz-crm',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(this.db=r.result);r.onerror=()=>rej(r.error)})},
-  get(k){return new Promise((res,rej)=>{const q=this.db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
-  set(k,v){return new Promise((res,rej)=>{const tx=this.db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})},
-  del(k){return new Promise((res,rej)=>{const tx=this.db.transaction('kv','readwrite');tx.objectStore('kv').delete(k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}};
+  open(){return new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('andz-crm',2);
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('photos'))d.createObjectStore('photos')};
+    r.onsuccess=()=>res(this.db=r.result);r.onerror=()=>rej(r.error)})},
+  get(k,st='kv'){return new Promise((res,rej)=>{const q=this.db.transaction(st).objectStore(st).get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
+  set(k,v,st='kv'){return new Promise((res,rej)=>{const tx=this.db.transaction(st,'readwrite');tx.objectStore(st).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})},
+  del(k,st='kv'){return new Promise((res,rej)=>{const tx=this.db.transaction(st,'readwrite');tx.objectStore(st).delete(k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})},
+  clear(st){return new Promise((res,rej)=>{const tx=this.db.transaction(st,'readwrite');tx.objectStore(st).clear();tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})},
+  count(st){return new Promise((res,rej)=>{const q=this.db.transaction(st).objectStore(st).count();q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})}};
+/* photos: resized JPEGs kept in this device's IndexedDB, visits hold their ids */
+const Photos={urls:new Map(),
+  get ok(){return !!IDB.db},
+  async put(blob){const id='p'+newId();await IDB.set(id,blob,'photos');return id},
+  async url(id){if(this.urls.has(id))return this.urls.get(id);let b=null;try{b=await IDB.get(id,'photos')}catch(e){}if(!b)return '';const u=URL.createObjectURL(b);this.urls.set(id,u);return u},
+  async del(id){try{await IDB.del(id,'photos')}catch(e){}const u=this.urls.get(id);if(u){URL.revokeObjectURL(u);this.urls.delete(id)}},
+  hydrate(root){root.querySelectorAll('img[data-pid]').forEach(async img=>{const u=await Photos.url(img.dataset.pid);if(u)img.src=u;else img.closest('.ph')?.classList.add('missing')})}
+};
+function resizeImage(file,max=1600){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const img=new Image();
+  img.onload=()=>{let w=img.naturalWidth,h=img.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+    const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(u);
+    c.toBlob(b=>b?res(b):rej(new Error('blob')),'image/jpeg',.82)};
+  img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error('load'))};img.src=u})}
+const camSvg='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 4h6l1.6 2H20a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.4zm3 4.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z"/></svg>';
+function openViewer(items,i,opts={}){
+  const el=document.createElement('div');el.className='viewer';document.body.appendChild(el);
+  const close=()=>{el.remove();document.removeEventListener('keydown',key)};
+  const key=e=>{if(e.key==='Escape')close();if(e.key==='ArrowLeft')go(-1);if(e.key==='ArrowRight')go(1)};document.addEventListener('keydown',key);
+  const go=d=>{if(!items.length)return;i=(i+d+items.length)%items.length;draw()};
+  function draw(){
+    if(!items.length){close();return}
+    const it=items[i];
+    el.innerHTML=`<div class="vtop"><button class="vx">閉じる</button><span>${i+1} / ${items.length}${it.caption?'　'+esc(it.caption):''}</span>${opts.onDelete?'<button class="vdel">削除</button>':'<span></span>'}</div>
+      <div class="vimg"><img alt="写真"></div>
+      ${items.length>1?'<div class="vnav"><button class="vp" aria-label="前の写真">‹</button><button class="vn" aria-label="次の写真">›</button></div>':''}`;
+    Photos.url(it.id).then(u=>{const im=$('img',el);if(im&&u)im.src=u});
+    $('.vx',el).onclick=close;
+    if($('.vp',el)){$('.vp',el).onclick=()=>go(-1);$('.vn',el).onclick=()=>go(1)}
+    const del=$('.vdel',el);if(del)del.onclick=()=>{const bar=document.createElement('div');bar.className='vconfirm';bar.innerHTML='<span>この写真を削除しますか？</span><button class="btn sm primary">削除する</button><button class="btn sm">やめる</button>';
+      el.appendChild(bar);const [y,n]=bar.querySelectorAll('button');n.onclick=()=>bar.remove();y.onclick=()=>{opts.onDelete(it.id);items.splice(i,1);if(i>=items.length)i=0;draw()}};
+  }
+  let sx=null;el.addEventListener('touchstart',e=>{sx=e.touches[0].clientX},{passive:true});
+  el.addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50)go(dx<0?1:-1);sx=null});
+  draw();
+}
 const Store={
   mode:'loading',db:null,uid:null,dirty:new Set(),timer:null,writing:false,failed:false,onProgress:null,
   async init(){
@@ -368,7 +428,7 @@ const Store={
   async wipe(){
     D.customers.clear();D.visits.clear();D.ver++;
     if(this.mode==='db'){const snap=await this.col().limit(1000).get();for(const d of snap.docs){await this.col().doc(d.id).delete()}}
-    else{try{localStorage.removeItem('andz-crm')}catch(e){}try{if(IDB.db)await IDB.del('data')}catch(e){}}
+    else{try{localStorage.removeItem('andz-crm')}catch(e){}try{if(IDB.db){await IDB.del('data');await IDB.clear('photos')}}catch(e){}}
   }
 };
 function dbMsg(e){const c=e&&e.code;
@@ -406,8 +466,8 @@ function ensureReal(){if(S.sample){D.customers.clear();D.visits.clear();S.sample
 /* ---------- mutations ---------- */
 function saveCustomer(c){D.customers.set(c.id,c);Store.touchC(c);refreshUI()}
 function saveVisit(v,oldDate){if(oldDate&&oldDate!==v.date&&!S.sample)Store.dirty.add(Store.vb({date:oldDate}));D.visits.set(v.id,v);Store.touchV(v);refreshUI()}
-function deleteVisit(v){D.visits.delete(v.id);Store.touchV(v);refreshUI()}
-function deleteCustomer(c){for(const v of visitsOf(c.id)){D.visits.delete(v.id);if(!S.sample)Store.dirty.add(Store.vb(v))}D.customers.delete(c.id);Store.touchC(c);refreshUI()}
+function deleteVisit(v){(v.photos||[]).forEach(id=>Photos.del(id));D.visits.delete(v.id);Store.touchV(v);refreshUI()}
+function deleteCustomer(c){for(const v of visitsOf(c.id)){(v.photos||[]).forEach(id=>Photos.del(id));D.visits.delete(v.id);if(!S.sample)Store.dirty.add(Store.vb(v))}D.customers.delete(c.id);Store.touchC(c);refreshUI()}
 
 /* ---------- UI shell ---------- */
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,2600)}
@@ -457,7 +517,7 @@ const yMan=v=>v>=10000?(v/10000).toLocaleString('ja-JP',{maximumFractionDigits:1
 /* ---------- components ---------- */
 const starHtml=r=>`<span class="star" aria-label="評価${r||0}"><svg viewBox="0 0 24 24"><path d="M12 1.8l3 6.4 7 .9-5.1 4.8 1.3 6.9L12 17.4l-6.2 3.4 1.3-6.9L2 9.1l7-.9z" fill="#e9e9ee"/></svg><b>${r||0}</b></span>`;
 const cname=cid=>{const c=D.customers.get(cid);return c?c.name:'（削除済み）'};
-function visitRows(vs){return vs.map(v=>`<div class="vrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span><span class="pill">${esc(cname(v.cid))}</span></span><span>${fmtDur(v.dur)}</span><span>${yen(v.amount)}</span><span>${starHtml(v.rating)}</span><span>${esc((v.memo||'').replace(/\n/g,' '))}</span></div>`).join('')}
+function visitRows(vs){return vs.map(v=>`<div class="vrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span><span class="pill">${esc(cname(v.cid))}</span></span><span>${fmtDur(v.dur)}</span><span>${yen(v.amount)}</span><span>${starHtml(v.rating)}</span><span>${v.photos&&v.photos.length?'<i class="pmark">'+camSvg+'</i>':''}${esc((v.memo||'').replace(/\n/g,' '))}</span></div>`).join('')}
 const vhead=`<div class="vhead"><span>名前</span><span>滞在時間</span><span>金額</span><span>評価</span><span>メモ</span></div>`;
 function emptyState(){return `<div class="empty"><h2>まだお客様が登録されていません</h2><p>今お使いのアプリから書き出したCSVを取り込むと、お客様と来店履歴をそのまま移せます。1件ずつ登録することもできます。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button><button class="btn" data-act="newVisit">来店を記録</button><button class="btn" data-act="sample">サンプルで試す</button></div></div>`}
 const monthVisits=(y,m)=>{const k=`${y}-${pad(m)}`;return [...D.visits.values()].filter(v=>v.date.startsWith(k))};
@@ -570,7 +630,7 @@ function openSheet(title,draw,{live=false,right=''}={}){
   const el=document.createElement('div');el.className='sheet';
   el.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="phead"><button class="x">閉じる</button><h2>${esc(title)}</h2><span class="pr"></span></div><div class="pbody"></div></div>`;
   document.body.appendChild(el);
-  const s={el,body:$('.pbody',el),live,close(){el.remove();sheets.splice(sheets.indexOf(s),1)},setTitle(t){$('h2',el).textContent=t},right:$('.pr',el)};
+  const s={el,body:$('.pbody',el),live,close(){el.remove();sheets.splice(sheets.indexOf(s),1);if(s.onClose)s.onClose()},setTitle(t){$('h2',el).textContent=t},right:$('.pr',el)};
   s.draw=()=>draw(s.body,s);
   $('.x',el).onclick=()=>s.close();
   el.addEventListener('click',e=>{if(e.target===el)s.close()});
@@ -595,9 +655,11 @@ function openCustomer(id){
       ${info.length?`<dl class="info">${info.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}${k==='電話番号'?' <button class="btn sm" data-copy="'+esc(v)+'">コピー</button>':''}</dd>`).join('')}</dl>`:''}
       ${c.legacy&&(c.legacy.count||c.legacy.total)?`<p class="hint">前のアプリから移した記録: 来店${+c.legacy.count||0}回・合計${yen(c.legacy.total)}${c.legacy.last?'（〜'+fmtD(c.legacy.last)+'）':''}</p>`:''}
       <div class="btnrow"><button class="btn primary" id="cd-add">来店を記録</button><button class="btn" id="cd-edit">編集</button></div>
+      ${(()=>{const ph=[];for(const v of vs)for(const id of v.photos||[])ph.push({id,caption:fmtD(v.date)});return ph.length?`<h3>写真（${ph.length}枚）</h3><div class="photos gal">${ph.map((p,i)=>`<button type="button" class="ph" data-gi="${i}"><img data-pid="${p.id}" alt="${p.caption}の写真"><small>${p.caption}</small></button>`).join('')}</div>`:''})()}
       <h3>来店履歴（${vs.length}件）</h3>
-      <div class="hist">${vs.map(v=>`<div class="hrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span class="d">${fmtD(v.date)} (${wdOf(v.date)})</span><span class="s">${v.start?v.start+'〜 ':''}${fmtDur(v.dur)} ${'★'.repeat(v.rating||0)}</span><span class="a">${yen(v.amount)}</span>${v.memo||v.cat?`<span class="m">${esc([v.cat,v.memo].filter(Boolean).join('｜'))}</span>`:''}</div>`).join('')||'<p class="muted">まだ記録はありません</p>'}</div>
+      <div class="hist">${vs.map(v=>`<div class="hrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span class="d">${fmtD(v.date)} (${wdOf(v.date)})</span><span class="s">${v.start?v.start+'〜 ':''}${fmtDur(v.dur)} ${'★'.repeat(v.rating||0)}</span><span class="a">${yen(v.amount)}</span>${v.photos&&v.photos.length?`<span class="m">${camSvg.replace('<svg','<svg class="ic"')} 写真${v.photos.length}枚</span>`:''}${v.memo||v.cat?`<span class="m">${esc([v.cat,v.memo].filter(Boolean).join('｜'))}</span>`:''}</div>`).join('')||'<p class="muted">まだ記録はありません</p>'}</div>
       <div><button class="btn danger" id="cd-del">このお客様を削除</button></div>`;
+    {const ph=[];for(const v of vs)for(const id of v.photos||[])ph.push({id,caption:fmtD(v.date)});Photos.hydrate(body);body.querySelectorAll('[data-gi]').forEach(b=>b.onclick=()=>openViewer(ph.slice(),+b.dataset.gi))}
     $('#cd-add',body).onclick=()=>openVisitForm(null,{cid:id});
     $('#cd-edit',body).onclick=()=>openCustomerForm(c);
     $('#cd-del',body).onclick=e=>inlineConfirm(e.currentTarget,`${c.name}さんと来店履歴${vs.length}件を削除します。元に戻せません。`,'削除する',()=>{ensureRealFor(()=>{deleteCustomer(c)});s.close();toast('削除しました')});
@@ -636,11 +698,13 @@ function openVisitForm(v0,preset={}){
   const isNew=!v0;const v=v0?{...v0}:{id:newId(),cid:preset.cid||'',date:preset.date||todayStr(),start:'',dur:60,amount:'',rating:0,cat:'',memo:''};
   if(!v.start&&isNew){const t=new Date();v.start=pad(t.getHours())+':'+(t.getMinutes()<30?'00':'30')}
   let cid=v.cid,picking=!cid,quick=false;
+  let photos=[...(v.photos||[])];const added=[],removed=[];let saved=false;
   const toMin=t=>{if(!t)return null;const [h,m]=t.split(':').map(Number);return h*60+m};
   const toT=n=>pad(Math.floor(n/60)%24)+':'+pad(n%60);
   openSheet(isNew?'来店を記録':'来店の記録',(body,s)=>{
     if(!isNew&&!s.right.firstChild){s.right.innerHTML='<button class="btn sm" id="vf-del">削除</button>';
       $('#vf-del',s.right).onclick=()=>{const host=$('#vf-delhost',body);host.scrollIntoView({block:'center'});inlineConfirm(host.firstElementChild,'この来店記録を削除します。元に戻せません。','削除する',()=>{deleteVisit(v0);s.close();toast('削除しました')})}}
+    s.onClose=()=>{if(!saved)added.forEach(id=>Photos.del(id))};
     const c=D.customers.get(cid);
     const end=v.start?toT(toMin(v.start)+(v.dur||0)):'';
     body.classList.add('vform');
@@ -659,6 +723,7 @@ function openVisitForm(v0,preset={}){
         <label class="lrow"><span>カテゴリ</span><span class="rv"><input id="vf-cat" type="text" placeholder="例 カット・カラー" value="${esc(v.cat||'')}"></span></label>
       </div>
       <div class="rate"><span>評価</span><div class="bigstars" id="vf-stars">${[1,2,3,4,5].map(n=>`<button type="button" data-n="${n}" class="${n<=v.rating?'on':''}" aria-label="評価${n}"><svg viewBox="0 0 24 24"><path d="M12 1.8l3 6.4 7 .9-5.1 4.8 1.3 6.9L12 17.4l-6.2 3.4 1.3-6.9L2 9.1l7-.9z"/></svg></button>`).join('')}</div></div>
+      ${Photos.ok?`<div class="mlabel">写真${photos.length?`（${photos.length}枚）`:''}</div><div class="photos">${photos.map((id,i)=>`<button type="button" class="ph" data-i="${i}"><img data-pid="${id}" alt="写真${i+1}"></button>`).join('')}<label class="addph" for="vf-file">${camSvg}<span>写真を追加</span></label></div><input type="file" id="vf-file" accept="image/*" multiple hidden><p class="hint" id="vf-phmsg" hidden></p>`:''}
       <div class="mlabel">メモ</div>
       <textarea id="vf-memo" class="memo" placeholder="※よかったこと、悪かったこと、気がついたことなど、どんどん書いておきましょう">${esc(v.memo||'')}</textarea>
       <p class="hint warn" id="vf-err" hidden></p>
@@ -674,6 +739,11 @@ function openVisitForm(v0,preset={}){
     body.querySelectorAll('.quick button').forEach(b=>b.onclick=()=>{v.dur=+b.dataset.q;const st=toMin($('#vf-start',body).value);if(st!=null)$('#vf-end',body).value=toT(st+v.dur);showDur()});
     const am=$('#vf-amount',body);am.onfocus=()=>{am.value=am.value.replace(/,/g,'')};am.onblur=()=>{if(am.value!=='')am.value=pNum(am.value).toLocaleString('ja-JP')};
     $('#vf-stars',body).onclick=e=>{const b=e.target.closest('button');if(!b)return;const n=+b.dataset.n;v.rating=v.rating===n?0:n;body.querySelectorAll('#vf-stars button').forEach(x=>x.classList.toggle('on',+x.dataset.n<=v.rating))};
+    if(Photos.ok){Photos.hydrate(body);
+      $('#vf-file',body).onchange=async e=>{const files=[...e.target.files];if(!files.length)return;keep();const msg=$('#vf-phmsg',body);msg.textContent=`写真を保存しています…（${files.length}枚）`;msg.hidden=false;let ng=0;
+        for(const f of files){try{const id=await Photos.put(await resizeImage(f));photos.push(id);added.push(id)}catch(err){ng++}}
+        s.draw();if(ng)toast(`${ng}枚の写真を読み込めませんでした`)};
+      body.querySelectorAll('.ph').forEach(b=>b.onclick=()=>{keep();openViewer(photos.map(id=>({id})),+b.dataset.i,{onDelete:id=>{photos=photos.filter(x=>x!==id);if(added.includes(id))Photos.del(id);else removed.push(id);s.draw()}})});}
     const nameI=$('#vf-name',body);
     if(nameI){const sugg=$('#vf-sugg',body);
       const upd=()=>{const raw=norm(nameI.value),q=nameKey(raw);
@@ -691,7 +761,7 @@ function openVisitForm(v0,preset={}){
       if(!v.date){err.textContent='来店日を選んでください';err.hidden=false;return}
       const wasSample=S.sample;const name=cust.name;ensureReal();
       let cc=wasSample?findByName(name):cust;if(!cc){cc={id:newId(),name,created:todayStr()};saveCustomer(cc)}
-      const nv={...v,cid:cc.id,amount:+v.amount||0,cat:norm(v.cat),memo:String(v.memo).trim()};
+      const nv={...v,cid:cc.id,amount:+v.amount||0,cat:norm(v.cat),memo:String(v.memo).trim(),photos};if(!photos.length)delete nv.photos;saved=true;removed.forEach(id=>Photos.del(id));
       if(wasSample)nv.id=newId();
       saveVisit(nv,v0&&!wasSample?v0.date:null);s.close();toast('保存しました');
     };
@@ -760,10 +830,12 @@ function openSettings(){
   openSheet('データ管理',(body,s)=>{
     body.innerHTML=`<div class="tiles"><div class="tile"><small>お客様</small><b>${S.sample?0:D.customers.size}人</b></div><div class="tile"><small>来店記録</small><b>${S.sample?0:D.visits.size}件</b></div></div>
       <p class="hint">${Store.mode==='db'?'データはあなたのアカウント専用の場所に保存されます。このページを他の人に共有しても、あなたのお客様情報は見えません。':'この端末の中にだけ保存しています。別の端末からは見えません。機種変更や万一に備えて、ときどきCSVで書き出しておいてください。'}</p>
+      ${Photos.ok?'<p class="hint" id="st-ph"></p>':''}
       <button class="btn primary" id="st-imp">CSVを取り込む</button>
       <div class="btnrow"><button class="btn" id="st-exc">顧客をCSVで書き出す</button><button class="btn" id="st-exv">来店履歴をCSVで書き出す</button></div>
       <div style="margin-top:12px"><button class="btn danger" id="st-wipe">すべてのデータを削除</button></div>`;
     $('#st-imp',body).onclick=()=>openImport();
+    if(Photos.ok)(async()=>{try{const n=await IDB.count('photos');let t=`写真 ${n}枚`;if(navigator.storage&&navigator.storage.estimate){const e=await navigator.storage.estimate();t+=`・使用量 約${Math.round((e.usage||0)/1048576)}MB`}const el=$('#st-ph',body);if(el)el.textContent=t+'。写真はCSVには入りません。'}catch(e){}})();
     $('#st-exc',body).onclick=()=>exportCustomers();
     $('#st-exv',body).onclick=()=>exportVisits();
     $('#st-wipe',body).onclick=e=>inlineConfirm(e.currentTarget,'お客様と来店記録をすべて削除します。元に戻せません。先にCSVで書き出しておくと安心です。','すべて削除する',async()=>{
