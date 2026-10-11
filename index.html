@@ -255,6 +255,35 @@ svg.ic{width:13px;height:13px;vertical-align:-2px}
 .vnav button{pointer-events:auto;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;font-size:26px}
 .vconfirm{position:absolute;left:12px;right:12px;bottom:calc(16px + var(--sat-bottom));background:var(--surface);border-radius:12px;padding:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:var(--fg)}
 .vconfirm span{flex:1 1 100%}
+.chead .nh{display:flex;background:var(--accent)}
+.chead .nh button{flex:1;padding:9px 2px}
+.chead .nh button:first-child{flex:0 0 3.4em;border-right:1px solid rgba(255,255,255,.25)}
+.crow .nc{flex-direction:column;gap:3px}
+.cno{font-size:10.5px;color:var(--muted);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.sugg .cno{margin-right:4px}
+.noline{display:flex;align-items:baseline;gap:10px;color:var(--muted);font-size:13px}
+.noline b{color:var(--fg);font-size:20px;letter-spacing:.08em;font-variant-numeric:tabular-nums}
+.lock{position:fixed;inset:0;background:var(--bg);z-index:60;display:grid;place-items:center;padding:calc(20px + var(--sat-top)) 16px calc(20px + var(--sat-bottom))}
+.lk-in{display:grid;justify-items:center;gap:14px;width:100%;max-width:320px}
+.lk-in h2{margin:0;font-size:18px}
+.lk-icon img{width:64px;height:64px;border-radius:15px}
+.lk-msg{min-height:2.8em;margin:0;color:var(--gold);font-size:13px;text-align:center;line-height:1.5}
+.dots{display:flex;gap:16px;justify-content:center;padding:6px 0}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--fg)}
+.dots i.on{background:var(--fg)}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:16px 24px;justify-content:center}
+.pad button{width:72px;height:72px;border-radius:50%;background:var(--card);font-size:28px;font-weight:500}
+.pad button.sm{background:transparent;font-size:14px;color:var(--muted)}
+.pad button:active{background:var(--line)}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-10px)}50%{transform:translateX(10px)}75%{transform:translateX(-6px)}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}}
+#cloudchip{position:fixed;top:calc(8px + var(--sat-top));left:12px;background:var(--card);color:var(--muted);font-size:11px;padding:4px 10px;border-radius:999px;z-index:30}
+#cloudchip.warn{color:var(--gold)}
+.cloudbox{background:var(--card2);border-radius:12px;padding:12px;display:grid;gap:6px;font-size:13px}
+.cloudbox span{color:var(--muted);line-height:1.6}
+.login .field{width:100%}
+.login .btn.sm{background:transparent;color:var(--muted)}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#f3f3f5;color:#111;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:40;max-width:calc(100% - 32px);text-align:center}
 #savechip{position:fixed;top:calc(8px + var(--sat-top));right:12px;background:var(--card);color:var(--muted);font-size:11px;padding:4px 10px;border-radius:999px;z-index:30}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
@@ -279,6 +308,7 @@ svg.ic{width:13px;height:13px;vertical-align:-2px}
 </div>
 <div id="toast" hidden></div>
 <div id="savechip" hidden></div>
+<div id="cloudchip" hidden></div>
 
 <script>
 /* ---------- helpers ---------- */
@@ -303,7 +333,7 @@ const capCache={};
 const cap=n=>capCache[n]||(capCache[n]=(window.claude&&typeof window.claude.use==='function')?window.claude.use(n).catch(()=>null):Promise.resolve(null));
 
 /* ---------- data ---------- */
-const D={customers:new Map(),visits:new Map(),ver:0,_idx:null,_iv:-1,_st:new Map(),_sv:-1};
+const D={customers:new Map(),visits:new Map(),meta:{nextNo:1},ver:0,_idx:null,_iv:-1,_st:new Map(),_sv:-1};
 const cmpVisit=(a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.start||'99')<(b.start||'99')?-1:(a.start||'99')>(b.start||'99')?1:0;
 function byCustomer(){
   if(D._iv!==D.ver){const m=new Map();for(const v of D.visits.values()){let a=m.get(v.cid);if(!a)m.set(v.cid,a=[]);a.push(v)}for(const a of m.values())a.sort(cmpVisit);D._idx=m;D._iv=D.ver}
@@ -324,13 +354,29 @@ function stats(c){
   if(useLegacy&&!count&&(L.last||L.first))count=0;
   s={count,total,last,first,avg:count?total/count:0};D._st.set(c.id,s);return s;
 }
+const fmtNo=n=>n?String(n).padStart(5,'0'):'—';
+function findByNo(n){n=+n;if(!n)return null;for(const c of D.customers.values())if(c.no===n)return c;return null}
+/* give every customer without a number the next one, oldest customers first; numbers are never reused */
+function assignNos(){
+  const all=[...D.customers.values()],need=all.filter(c=>!c.no);if(!need.length)return false;
+  let next=Math.max(D.meta.nextNo||1,1+all.reduce((m,c)=>Math.max(m,c.no||0),0));
+  need.sort((a,b)=>{const fa=stats(a).first||'9999',fb=stats(b).first||'9999';return fa<fb?-1:fa>fb?1:((a.created||'')<(b.created||'')?-1:(a.created||'')>(b.created||'')?1:0)});
+  for(const c of need){c.no=next++;if(!S.sample)Store.dirty.add(Store.cb(c.id))}
+  D.meta.nextNo=next;if(!S.sample)Store.dirty.add('meta');D.ver++;return true;
+}
 function findByName(name){const k=nameKey(name);for(const c of D.customers.values())if(nameKey(c.name)===k)return c;return null}
 
 /* ---------- storage ---------- */
 const IDB={db:null,
-  open(){return new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('no idb'));const r=indexedDB.open('andz-crm',2);
-    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('photos'))d.createObjectStore('photos')};
-    r.onsuccess=()=>res(this.db=r.result);r.onerror=()=>rej(r.error)})},
+  open(){return new Promise((res,rej)=>{if(!window.indexedDB)return rej(new Error('no idb'));let r;try{r=indexedDB.open('andz-crm',3)}catch(e){return rej(e)}
+    const t=setTimeout(()=>rej(new Error('timeout')),10000);
+    r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains('kv'))d.createObjectStore('kv');if(!d.objectStoreNames.contains('photos'))d.createObjectStore('photos');
+      if(!d.objectStoreNames.contains('customers'))d.createObjectStore('customers',{keyPath:'id'});if(!d.objectStoreNames.contains('visits'))d.createObjectStore('visits',{keyPath:'id'})};
+    r.onblocked=()=>toast('アプリが別の画面でも開いています。ほかのタブを閉じてください');
+    r.onsuccess=()=>{clearTimeout(t);const db=r.result;db.onversionchange=()=>{db.close();location.reload()};res(this.db=db)};
+    r.onerror=()=>{clearTimeout(t);rej(r.error)}})},
+  keys(st){return new Promise((res,rej)=>{const q=this.db.transaction(st).objectStore(st).getAllKeys();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error)})},
+  getAll(st){return new Promise((res,rej)=>{const q=this.db.transaction(st).objectStore(st).getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>rej(q.error)})},
   get(k,st='kv'){return new Promise((res,rej)=>{const q=this.db.transaction(st).objectStore(st).get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>rej(q.error)})},
   set(k,v,st='kv'){return new Promise((res,rej)=>{const tx=this.db.transaction(st,'readwrite');tx.objectStore(st).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})},
   del(k,st='kv'){return new Promise((res,rej)=>{const tx=this.db.transaction(st,'readwrite');tx.objectStore(st).delete(k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})},
@@ -379,64 +425,134 @@ const Store={
     if(db&&this.uid){
       this.db=db;this.mode='db';
       try{await this.loadDb()}catch(e){console.error(e);toast('データを読み込めませんでした。ページを開き直してください')}
-    }else{this.mode='local';await this.loadLocal();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}}
+    }else{this.mode='local';await this.loadLocal();try{if(navigator.storage&&navigator.storage.persist)this.persisted=await navigator.storage.persist()}catch(e){}}
   },
   col(){return this.db.collection('data/users/'+this.uid)},
   async loadDb(){
     const snap=await this.col().limit(1000).get();
     D.customers.clear();D.visits.clear();
-    for(const d of snap.docs){const b=d.data();if(!b||!Array.isArray(b.items))continue;
+    for(const d of snap.docs){const b=d.data();if(d.id==='meta'&&b){D.meta={nextNo:+b.nextNo||1};continue}if(!b||!Array.isArray(b.items))continue;
       if(d.id.startsWith('c-'))for(const c of b.items)D.customers.set(c.id,c);
       else if(d.id.startsWith('v-'))for(const v of b.items)D.visits.set(v.id,v);}
     D.ver++;
   },
+  loadOk:false,loadErr:null,persisted:null,saved:{c:new Map(),v:new Map(),meta:''},again:false,
   async loadLocal(){
-    let j=null;
-    try{await IDB.open();j=await IDB.get('data')}catch(e){IDB.db=null}
-    if(!j){try{j=JSON.parse(localStorage.getItem('andz-crm')||'null')}catch(e){}}
-    if(j){for(const c of j.c)D.customers.set(c.id,c);for(const v of j.v)D.visits.set(v.id,v);D.ver++}
+    for(let i=0;i<3&&!this.loadOk;i++){
+      try{if(!IDB.db)await IDB.open();await this.readAll();this.loadOk=true}
+      catch(e){this.loadErr=e;console.error(e);try{IDB.db&&IDB.db.close()}catch(_){}IDB.db=null;await sleep(500*(i+1))}
+    }
   },
-  async saveLocal(){
-    const data={c:[...D.customers.values()],v:[...D.visits.values()]};
-    if(IDB.db){await IDB.set('data',data);try{localStorage.removeItem('andz-crm')}catch(e){}return}
-    localStorage.setItem('andz-crm',JSON.stringify(data));
+  /* read every record from this device; older one-block saves are merged in once */
+  async readAll(){
+    let [C,V,M]=await Promise.all([IDB.getAll('customers'),IDB.getAll('visits'),IDB.get('meta')]);
+    if(!C.length&&!V.length){
+      let old=null,ls=null;try{old=await IDB.get('data')}catch(e){}try{ls=JSON.parse(localStorage.getItem('andz-crm')||'null')}catch(e){}
+      if((old&&(old.c||[]).length)||(ls&&(ls.c||[]).length)){
+        const mc=new Map(),mv=new Map();
+        for(const src of [old,ls])if(src){(src.c||[]).forEach(c=>mc.set(c.id,c));(src.v||[]).forEach(v=>mv.set(v.id,v))}
+        C=[...mc.values()];V=[...mv.values()];
+        M={nextNo:Math.max(+(old&&old.meta&&old.meta.nextNo)||1,+(ls&&ls.meta&&ls.meta.nextNo)||1)};
+        await this.txn(tx=>{const cs=tx.objectStore('customers'),vs=tx.objectStore('visits');C.forEach(c=>cs.put(c));V.forEach(v=>vs.put(v));tx.objectStore('kv').put(M,'meta')});
+        this.migrated=true;
+      }
+    }
+    D.customers.clear();D.visits.clear();C.forEach(c=>D.customers.set(c.id,c));V.forEach(v=>D.visits.set(v.id,v));
+    D.meta=M?{nextNo:+M.nextNo||1}:{nextNo:1};
+    try{const T=await IDB.get('tomb');this.tomb=new Map((T||[]).map(t=>[t.id,t]));const CD=await IDB.get('cloudDirty');Cloud.dirty=new Set(CD||[])}catch(e){}
+    for(const id of [...this.tomb.keys()])if(D.customers.has(id)||D.visits.has(id))this.tomb.delete(id);
+    this.savedU=new Map([...C,...V].map(r=>[r.id,r.u||0]));
+    this.saved={c:new Map(C.map(c=>[c.id,JSON.stringify(c)])),v:new Map(V.map(v=>[v.id,JSON.stringify(v)])),meta:JSON.stringify(D.meta)};
+    D.ver++;
   },
+  txn(fn){return new Promise((res,rej)=>{const tx=IDB.db.transaction(['customers','visits','kv'],'readwrite');fn(tx);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error||new Error('abort'))})},
+  /* write only what changed since the last save, in one transaction */
+  tomb:new Map(),
+  /* write only what changed since the last save, in one transaction.
+     stamp=true: a change made on this device -> time-stamp it and queue it for the cloud.
+     stamp=false: the change came from the cloud -> store it as-is. */
+  async saveLocal(stamp=true,fast=false){
+    if(!this.loadOk||!IDB.db)throw new Error('not loaded');
+    const nc=new Map(),nv=new Map();let n=0;const mj=JSON.stringify(D.meta);const now=Date.now();const cd=Cloud.dirty;const tomb=this.tomb;
+    for(const c of D.customers.values()){let j=JSON.stringify(c);if(this.saved.c.get(c.id)!==j&&stamp){c.u=now;j=JSON.stringify(c);cd.add(this.cb(c.id))}nc.set(c.id,j)}
+    for(const id of this.saved.c.keys())if(!nc.has(id)&&stamp&&!tomb.has(id)){tomb.set(id,{id,del:1,u:now,b:this.cb(id)});cd.add(this.cb(id))}
+    for(const v of D.visits.values()){let j=JSON.stringify(v);const old=this.saved.v.get(v.id);
+      if(old!==j&&stamp){v.u=now;j=JSON.stringify(v);cd.add(this.vb(v));if(old){try{const ov=JSON.parse(old);if(ov.date&&this.vb(ov)!==this.vb(v))cd.add(this.vb(ov))}catch(e){}}}
+      nv.set(v.id,j)}
+    for(const [id,old] of this.saved.v)if(!nv.has(id)&&stamp&&!tomb.has(id)){let b='';try{b=this.vb(JSON.parse(old))}catch(e){}if(b){tomb.set(id,{id,del:1,u:now,b});cd.add(b)}}
+    for(const id of [...tomb.keys()])if(nc.has(id)||nv.has(id))tomb.delete(id);
+    if(mj!==this.saved.meta&&stamp)cd.add('meta');
+    const cut=now-180*864e5;for(const [id,t] of tomb)if(t.u<cut)tomb.delete(id);
+    /* before writing a record, check the stored copy: if another screen saved a newer version
+       since this screen loaded it, do not overwrite it -> reload the latest instead */
+    const conflicts=new Set();const su=this.savedU||new Map();
+    await this.txn(tx=>{const cs=tx.objectStore('customers'),vs=tx.objectStore('visits'),kv=tx.objectStore('kv');
+      const chk=(st,id,act)=>{if(!stamp||fast){act();return}const q=st.get(id);q.onsuccess=()=>{const cur=q.result;if(cur&&(cur.u||0)>(su.get(id)||0)){conflicts.add(id);return}act()}};
+      for(const c of D.customers.values())if(this.saved.c.get(c.id)!==nc.get(c.id)){chk(cs,c.id,()=>cs.put(c));n++}
+      for(const id of this.saved.c.keys())if(!nc.has(id)){chk(cs,id,()=>cs.delete(id));n++}
+      for(const v of D.visits.values())if(this.saved.v.get(v.id)!==nv.get(v.id)){chk(vs,v.id,()=>vs.put(v));n++}
+      for(const id of this.saved.v.keys())if(!nv.has(id)){chk(vs,id,()=>vs.delete(id));n++}
+      if(mj!==this.saved.meta)kv.put(D.meta,'meta');
+      kv.put([...tomb.values()],'tomb');kv.put([...cd],'cloudDirty');
+    });
+    this.saved={c:nc,v:nv,meta:mj};
+    for(const c of D.customers.values())su.set(c.id,c.u||0);for(const v of D.visits.values())su.set(v.id,v.u||0);this.savedU=su;
+    if(conflicts.size){await this.readAll();refreshUI();toast('別の画面で新しく保存された内容があったため、最新の状態に切り替えました')}
+    try{localStorage.setItem('andz-count',String(D.customers.size+D.visits.size));localStorage.removeItem('andz-crm')}catch(e){}
+    if(n){if(Sync.ch)try{Sync.ch.postMessage('saved')}catch(e){}else try{localStorage.setItem('andz-ping',String(Date.now()))}catch(e){}}
+    if(stamp&&cd.size)Cloud.schedulePush();
+  },
+  async clearLocal(){
+    D.customers.clear();D.visits.clear();D.meta={nextNo:1};D.ver++;this.tomb=new Map();Cloud.dirty=new Set();
+    await this.txn(tx=>{tx.objectStore('customers').clear();tx.objectStore('visits').clear();const kv=tx.objectStore('kv');['data','meta','tomb','cloudDirty'].forEach(k=>kv.delete(k))});
+    this.saved={c:new Map(),v:new Map(),meta:JSON.stringify(D.meta)};try{localStorage.setItem('andz-count','0')}catch(e){}
+  },
+  get pending(){return !!this.timer||this.writing||this.dirty.size>0},
+  flushNow(){if(this.timer){clearTimeout(this.timer);this.timer=null}return this.flush()},
   cb(id){return 'c-'+pad(hash(id)%32)},
   vb(v){return 'v-'+v.date.slice(0,7)+'-'+(+v.date.slice(8,10)<=15?1:2)},
   touchC(c){D.ver++;if(S.sample)return;this.dirty.add(this.cb(c.id));this.schedule()},
   touchV(v){D.ver++;if(S.sample)return;if(v&&v.date)this.dirty.add(this.vb(v));this.schedule()},
-  schedule(){clearTimeout(this.timer);this.failed=false;setSave('saving');this.timer=setTimeout(()=>this.flush(),500)},
+  schedule(){clearTimeout(this.timer);this.failed=false;setSave('saving');this.timer=setTimeout(()=>{this.timer=null;this.flush()},this.mode==='db'?500:0)},
   async flush(){
-    if(this.writing)return;this.writing=true;
+    if(this.writing){this.again=true;return}this.writing=true;this.again=false;
     try{
-      if(this.mode!=='db'){this.dirty.clear();try{await this.saveLocal()}catch(e){toast('この端末に保存できませんでした。空き容量を確認してください')}}
+      if(this.mode!=='db'){if(S.sample){this.dirty.clear()}else{this.dirty.clear();await this.saveLocal()}}
       else{while(this.dirty.size){const id=this.dirty.values().next().value;this.dirty.delete(id);
         try{await this.writeBucket(id)}catch(e){this.dirty.add(id);throw e}
         if(this.onProgress)this.onProgress(this.dirty.size)}}
       setSave('saved');
-    }catch(e){this.failed=true;setSave('error');toast(dbMsg(e))}
-    finally{this.writing=false;if(this.dirty.size&&!this.failed)this.flush()}
+    }catch(e){this.failed=true;setSave('error');if(this.mode!=='db'){this.dirty.add('retry');toast('保存できませんでした。もう一度操作するか、アプリを開き直してください')}else toast(dbMsg(e))}
+    finally{this.writing=false;if((this.again||this.dirty.size)&&!this.failed)this.flush()}
   },
   items(id){return id.startsWith('c-')?[...D.customers.values()].filter(c=>this.cb(c.id)===id):[...D.visits.values()].filter(v=>this.vb(v)===id)},
   async writeBucket(id){
-    const items=this.items(id),ref=this.col().doc(id);
+    const items=id==='meta'?null:this.items(id),ref=this.col().doc(id);
     for(let i=0;;i++){
-      try{if(items.length)await ref.set({items});else await ref.delete();return}
+      try{if(!items){await ref.set({nextNo:D.meta.nextNo});return}if(items.length)await ref.set({items});else await ref.delete();return}
       catch(e){const c=e&&e.code;if((c==='resource_exhausted'||c==='unavailable')&&i<6){await sleep(800*(i+1)+Math.random()*600);continue}throw e}
     }
   },
   async wipe(){
-    D.customers.clear();D.visits.clear();D.ver++;
+    D.customers.clear();D.visits.clear();D.meta={nextNo:1};D.ver++;
     if(this.mode==='db'){const snap=await this.col().limit(1000).get();for(const d of snap.docs){await this.col().doc(d.id).delete()}}
-    else{try{localStorage.removeItem('andz-crm')}catch(e){}try{if(IDB.db){await IDB.del('data');await IDB.clear('photos')}}catch(e){}}
+    else{try{localStorage.removeItem('andz-crm')}catch(e){}await this.saveLocal(true);try{await IDB.clear('photos')}catch(e){}}
   }
 };
 function dbMsg(e){const c=e&&e.code;
   if(c==='quota_exceeded')return '保存できる容量の上限に達しました';
   if(c==='revoked'||c==='not_granted')return 'このページでは保存できません。開き直してください';
   return '保存に失敗しました。通信状態を確認して、もう一度操作してください';}
-function setSave(s){const el=$('#savechip');if(s==='saving'){el.textContent='保存中…';el.hidden=false}else if(s==='error'){el.textContent='未保存あり';el.hidden=false}else{el.textContent='保存しました';setTimeout(()=>{if(el.textContent==='保存しました')el.hidden=true},1200)}}
+function setSave(s){const el=$('#savechip');if(s==='saving'){el.textContent='保存中…';el.hidden=false}else if(s==='error'){el.textContent='未保存あり';el.hidden=false}else{el.textContent='保存しました ✓';el.hidden=false;setTimeout(()=>{if(el.textContent==='保存しました ✓')el.hidden=true},1500)}}
+const Sync={ch:null,async reload(){if(Store.mode!=='local'||!Store.loadOk||S.sample||Store.pending)return;try{await Store.readAll();refreshUI()}catch(e){}}};
+window.addEventListener('online',()=>Cloud.sync());
+try{Sync.ch=new BroadcastChannel('andz-crm');Sync.ch.onmessage=()=>Sync.reload()}catch(e){}
+if(!Sync.ch)window.addEventListener('storage',e=>{if(e.key==='andz-ping')Sync.reload()});
+/* leaving the app: write synchronously-queued changes right away (no version round-trip) so the OS cannot cut it off */
+Store.leaveSave=()=>{if(Store.mode!=='local'||!Store.loadOk||S.sample)return;if(Store.timer){clearTimeout(Store.timer);Store.timer=null}if(Store.pending||Store.writing)Store.saveLocal(true,true).catch(()=>{})};
+window.addEventListener('pagehide',()=>Store.leaveSave());
 document.addEventListener('visibilitychange',async()=>{
+  if(Store.mode==='local'){if(document.visibilityState==='hidden'){Store.leaveSave()}else{await Sync.reload();Cloud.sync()}}
   if(document.visibilityState==='visible'&&Store.mode==='db'&&!S.sample&&!Store.dirty.size&&!Store.writing){try{await Store.loadDb();refreshUI()}catch(e){}}
 });
 
@@ -459,12 +575,12 @@ function loadSample(){
     for(let j=0;j<n;j++){const c=cs[Math.floor(rnd()*cs.length)];
       D.visits.set('sv'+k,{id:'sv'+k++,cid:c.id,date:dstr(d),start:pad(10+j*1+Math.floor(rnd()*2))+':'+(rnd()<.5?'00':'30'),dur:[60,60,60,90,120][Math.floor(rnd()*5)],amount:prices[Math.floor(rnd()*prices.length)],rating:Math.floor(rnd()*4),cat:'',memo:memos[Math.floor(rnd()*memos.length)]})}
   }
-  S.sample=true;D.ver++;
+  S.realMeta={...D.meta};S.sample=true;D.ver++;assignNos();
 }
-function ensureReal(){if(S.sample){D.customers.clear();D.visits.clear();S.sample=false;D.ver++;toast('サンプルを消去しました')}}
+function ensureReal(){S.missing=false;if(S.sample){D.customers.clear();D.visits.clear();D.meta=S.realMeta||{nextNo:1};S.sample=false;D.ver++;toast('サンプルを消去しました')}}
 
 /* ---------- mutations ---------- */
-function saveCustomer(c){D.customers.set(c.id,c);Store.touchC(c);refreshUI()}
+function saveCustomer(c){D.customers.set(c.id,c);if(!c.no)assignNos();Store.touchC(c);refreshUI()}
 function saveVisit(v,oldDate){if(oldDate&&oldDate!==v.date&&!S.sample)Store.dirty.add(Store.vb({date:oldDate}));D.visits.set(v.id,v);Store.touchV(v);refreshUI()}
 function deleteVisit(v){(v.photos||[]).forEach(id=>Photos.del(id));D.visits.delete(v.id);Store.touchV(v);refreshUI()}
 function deleteCustomer(c){for(const v of visitsOf(c.id)){(v.photos||[]).forEach(id=>Photos.del(id));D.visits.delete(v.id);if(!S.sample)Store.dirty.add(Store.vb(v))}D.customers.delete(c.id);Store.touchC(c);refreshUI()}
@@ -486,8 +602,12 @@ function renderHeader(){
 function renderBanner(){
   const b=$('#banner');
   if(S.sample){b.hidden=false;b.innerHTML=`<span><b>サンプル表示中</b>　実際のデータではありません（保存されません）</span><span class="bb"><button class="btn sm primary" data-act="import">CSVを取り込む</button><button class="btn sm" data-act="clearSample">消す</button></span>`}
+  else if(backupDue()){const d=backupDays();b.hidden=false;b.innerHTML=`<span><b>バックアップ</b>　${d==null?'まだ一度もCSVに書き出していません':`最後の書き出しから${d}日たちました`}</span><span class="bb"><button class="btn sm primary" data-act="settings">書き出す</button><button class="btn sm" data-act="bkLater">あとで</button></span>`}
   else b.hidden=true;
 }
+function backupDays(){let t=null;try{t=localStorage.getItem('andz-lastbackup')}catch(e){}return t?Math.floor((Date.now()-+t)/864e5):null}
+function backupDue(){if(S.sample||S.bkLater||Store.mode!=='local'||!D.visits.size||Cloud.user)return false;const d=backupDays();return d==null||d>=7}
+function markBackup(){try{localStorage.setItem('andz-lastbackup',String(Date.now()))}catch(e){}S.bkLater=false;renderBanner()}
 function render(){
   if(!S.ready)return;
   renderHeader();renderBanner();
@@ -519,7 +639,7 @@ const starHtml=r=>`<span class="star" aria-label="評価${r||0}"><svg viewBox="0
 const cname=cid=>{const c=D.customers.get(cid);return c?c.name:'（削除済み）'};
 function visitRows(vs){return vs.map(v=>`<div class="vrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span><span class="pill">${esc(cname(v.cid))}</span></span><span>${fmtDur(v.dur)}</span><span>${yen(v.amount)}</span><span>${starHtml(v.rating)}</span><span>${v.photos&&v.photos.length?'<i class="pmark">'+camSvg+'</i>':''}${esc((v.memo||'').replace(/\n/g,' '))}</span></div>`).join('')}
 const vhead=`<div class="vhead"><span>名前</span><span>滞在時間</span><span>金額</span><span>評価</span><span>メモ</span></div>`;
-function emptyState(){return `<div class="empty"><h2>まだお客様が登録されていません</h2><p>今お使いのアプリから書き出したCSVを取り込むと、お客様と来店履歴をそのまま移せます。1件ずつ登録することもできます。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button><button class="btn" data-act="newVisit">来店を記録</button><button class="btn" data-act="sample">サンプルで試す</button></div></div>`}
+function emptyState(){if(S.missing)return `<div class="empty"><h2>保存されていたデータが見つかりません</h2><p>この端末には前にお客様が保存されていましたが、今は見つかりませんでした。スマホの「ストレージのクリーンアップ」やブラウザの「サイトデータ削除」で消された可能性があります。バックアップのCSVがあれば取り込んでください。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button></div></div>`;return `<div class="empty"><h2>まだお客様が登録されていません</h2><p>今お使いのアプリから書き出したCSVを取り込むと、お客様と来店履歴をそのまま移せます。1件ずつ登録することもできます。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button><button class="btn" data-act="newVisit">来店を記録</button><button class="btn" data-act="sample">サンプルで試す</button></div></div>`}
 const monthVisits=(y,m)=>{const k=`${y}-${pad(m)}`;return [...D.visits.values()].filter(v=>v.date.startsWith(k))};
 
 /* ---------- tab: input ---------- */
@@ -541,22 +661,22 @@ function renderInput(main){
 /* ---------- tab: customers ---------- */
 function renderCustomers(main){
   if(!D.customers.size){main.innerHTML=emptyState();return}
-  main.innerHTML=`<div class="filters"><div class="search"><input id="cq" type="search" placeholder="名前・ふりがな・電話で検索" value="${esc(S.q)}" autocomplete="off"><button class="iconbtn" data-act="clearQ" aria-label="検索を消す">×</button></div>
+  main.innerHTML=`<div class="filters"><div class="search"><input id="cq" type="search" placeholder="名前・ふりがな・電話・No.で検索" value="${esc(S.q)}" autocomplete="off"><button class="iconbtn" data-act="clearQ" aria-label="検索を消す">×</button></div>
   <div class="chips"><button class="btn outline" data-act="allstats">全顧客集計</button><button class="btn outline" data-act="an" data-kind="money">ランキング顧客</button><button class="btn outline" data-act="yearcmp">年比較</button></div></div>
-  <div class="ctable"><div class="chead">${[['name','名前'],['last','最終来店日'],['count','来店回数'],['total','合計金額']].map(([k,l])=>`<button data-act="sort" data-key="${k}">${l}${S.sort.key===k?(S.sort.dir>0?' ▲':' ▼'):''}</button>`).join('')}</div><div id="clist"></div></div>`;
+  <div class="ctable"><div class="chead"><span class="nh"><button data-act="sort" data-key="no">No.${S.sort.key==='no'?(S.sort.dir>0?'▲':'▼'):''}</button><button data-act="sort" data-key="name">名前${S.sort.key==='name'?(S.sort.dir>0?'▲':'▼'):''}</button></span>${[['last','最終来店日'],['count','来店回数'],['total','合計金額']].map(([k,l])=>`<button data-act="sort" data-key="${k}">${l}${S.sort.key===k?(S.sort.dir>0?' ▲':' ▼'):''}</button>`).join('')}</div><div id="clist"></div></div>`;
   $('#cq').addEventListener('input',e=>{S.q=e.target.value;S.limit=200;drawClist()});
   drawClist();
 }
 function filteredCustomers(){
   const q=nameKey(S.q);let a=[...D.customers.values()];
-  if(q)a=a.filter(c=>nameKey(c.name).includes(q)||nameKey(c.kana).includes(q)||nameKey(c.nick).includes(q)||nameKey(c.phone).replace(/-/g,'').includes(q.replace(/-/g,'')));
+  if(q)a=a.filter(c=>(/^\d+$/.test(q)&&fmtNo(c.no).includes(q))||nameKey(c.name).includes(q)||nameKey(c.kana).includes(q)||nameKey(c.nick).includes(q)||nameKey(c.phone).replace(/-/g,'').includes(q.replace(/-/g,'')));
   const {key,dir}=S.sort;
-  a.sort((x,y)=>{if(key==='name')return dir*(x.kana||x.name).localeCompare(y.kana||y.name,'ja');const sx=stats(x),sy=stats(y);const vx=sx[key]||'',vy=sy[key]||'';return vx<vy?-dir:vx>vy?dir:0});
+  a.sort((x,y)=>{if(key==='no')return dir*((x.no||0)-(y.no||0));if(key==='name')return dir*(x.kana||x.name).localeCompare(y.kana||y.name,'ja');const sx=stats(x),sy=stats(y);const vx=sx[key]||'',vy=sy[key]||'';return vx<vy?-dir:vx>vy?dir:0});
   return a;
 }
 function drawClist(){
   const el=$('#clist');if(!el)return;const a=filteredCustomers();
-  el.innerHTML=a.slice(0,S.limit).map(c=>{const s=stats(c);return `<div class="crow" data-act="cust" data-id="${c.id}" role="button" tabindex="0"><span><span class="pill">${esc(c.name)}</span></span><span>${s.last?fmtD(s.last):'—'}</span><span>${s.count}</span><span>${yen(s.total)}</span></div>`}).join('')+
+  el.innerHTML=a.slice(0,S.limit).map(c=>{const s=stats(c);return `<div class="crow" data-act="cust" data-id="${c.id}" role="button" tabindex="0"><span class="nc"><small class="cno">${fmtNo(c.no)}</small><span class="pill">${esc(c.name)}</span></span><span>${s.last?fmtD(s.last):'—'}</span><span>${s.count}</span><span>${yen(s.total)}</span></div>`}).join('')+
     (a.length>S.limit?`<button class="btn more" data-act="moreC">さらに表示（残り${a.length-S.limit}件）</button>`:'')+(a.length?'':'<p class="muted" style="text-align:center;padding:20px">見つかりませんでした</p>');
 }
 
@@ -648,10 +768,11 @@ function openCustomer(id){
   openSheet('お客様',(body,s)=>{
     const c=D.customers.get(id);if(!c){s.close();return}
     s.setTitle(c.name);
+    const noLine=`<div class="noline"><span>顧客番号</span><b>${fmtNo(c.no)}</b></div>`;
     const st=stats(c),vs=visitsOf(id).slice().reverse();
     const bd=c.birthday?(c.birthday.startsWith('0000')?`${+c.birthday.slice(5,7)}月${+c.birthday.slice(8)}日`:`${fmtD(c.birthday)}（${ageOf(c.birthday)}歳）`):'';
     const info=[['ふりがな',c.kana],['ニックネーム',c.nick],['電話番号',c.phone],['メール',c.email],['誕生日',bd],['性別',c.gender],['住所',c.address],['メモ',c.memo]].filter(r=>r[1]);
-    body.innerHTML=`<div class="tiles"><div class="tile"><small>来店回数</small><b>${st.count}回</b></div><div class="tile"><small>合計金額</small><b>${yen(st.total)}</b></div><div class="tile"><small>平均単価</small><b>${yen(st.avg)}</b></div><div class="tile"><small>最終来店</small><b>${st.last?fmtD(st.last):'—'}</b>${st.last?`<small>${daysSince(st.last)}日前</small>`:''}</div></div>
+    body.innerHTML=noLine+`<div class="tiles"><div class="tile"><small>来店回数</small><b>${st.count}回</b></div><div class="tile"><small>合計金額</small><b>${yen(st.total)}</b></div><div class="tile"><small>平均単価</small><b>${yen(st.avg)}</b></div><div class="tile"><small>最終来店</small><b>${st.last?fmtD(st.last):'—'}</b>${st.last?`<small>${daysSince(st.last)}日前</small>`:''}</div></div>
       ${info.length?`<dl class="info">${info.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}${k==='電話番号'?' <button class="btn sm" data-copy="'+esc(v)+'">コピー</button>':''}</dd>`).join('')}</dl>`:''}
       ${c.legacy&&(c.legacy.count||c.legacy.total)?`<p class="hint">前のアプリから移した記録: 来店${+c.legacy.count||0}回・合計${yen(c.legacy.total)}${c.legacy.last?'（〜'+fmtD(c.legacy.last)+'）':''}</p>`:''}
       <div class="btnrow"><button class="btn primary" id="cd-add">来店を記録</button><button class="btn" id="cd-edit">編集</button></div>
@@ -675,7 +796,7 @@ function openCustomerForm(c0){
   const isNew=!c0;const c=c0?{...c0}:{id:newId(),name:'',created:todayStr()};
   openSheet(isNew?'お客様を追加':'お客様を編集',(body,s)=>{
     const f=(k,l,type='text',extra='')=>`<label class="field"><span>${l}</span><input id="cf-${k}" type="${type}" value="${esc(k==='birthday'&&c.birthday&&c.birthday.startsWith('0000')?'':c[k]||'')}" ${extra}></label>`;
-    body.innerHTML=`${f('name','名前（必須）','text','autocomplete="off"')}<div class="two">${f('kana','ふりがな')}${f('nick','ニックネーム')}</div>
+    body.innerHTML=`<label class="field"><span>顧客番号${isNew?'（空欄なら自動で付きます）':''}</span><input id="cf-no" type="text" inputmode="numeric" value="${c.no?fmtNo(c.no):''}" placeholder="自動"></label>${f('name','名前（必須）','text','autocomplete="off"')}<div class="two">${f('kana','ふりがな')}${f('nick','ニックネーム')}</div>
       <div class="two">${f('phone','電話番号','tel')}${f('birthday','誕生日','date')}</div>${f('email','メール','email')}
       <label class="field"><span>性別</span><select id="cf-gender">${['','女性','男性','その他'].map(g=>`<option ${c.gender===g?'selected':''}>${g}</option>`).join('')}</select></label>
       ${f('address','住所')}<label class="field"><span>メモ</span><textarea id="cf-memo">${esc(c.memo||'')}</textarea></label>
@@ -684,7 +805,9 @@ function openCustomerForm(c0){
       const name=norm($('#cf-name',body).value);const err=$('#cf-err',body);
       if(!name){err.textContent='名前を入力してください';err.hidden=false;return}
       const dup=findByName(name);if(dup&&dup.id!==c.id){err.textContent=`「${name}」はすでに登録されています。別の書き方にしてください`;err.hidden=false;return}
+      const noRaw=norm($('#cf-no',body).value);let no=null;if(noRaw){if(!/^\d{1,9}$/.test(noRaw)){err.textContent='顧客番号は数字で入力してください';err.hidden=false;return}no=+noRaw;const o=findByNo(no);if(o&&o.id!==c.id){err.textContent=`${fmtNo(no)} は「${o.name}」さんの番号です`;err.hidden=false;return}}
       ensureReal();
+      if(no){c.no=no;if(no>=(D.meta.nextNo||1)){D.meta.nextNo=no+1;if(!S.sample)Store.dirty.add('meta')}}
       c.name=name;for(const k of ['kana','nick','phone','email','address'])c[k]=norm($('#cf-'+k,body).value);
       const b=$('#cf-birthday',body).value;if(b||!(c.birthday||'').startsWith('0000'))c.birthday=b;
       c.gender=$('#cf-gender',body).value;c.memo=$('#cf-memo',body).value.trim();
@@ -710,7 +833,7 @@ function openVisitForm(v0,preset={}){
     body.classList.add('vform');
     body.innerHTML=`<div class="lgroup">
         <button class="lrow" id="vf-who"><span>来店者</span><span class="rv">${c?`<span class="pill">${esc(c.name)}</span>`:'<span class="muted">選んでください</span>'}</span><span class="chev">›</span></button>
-        ${picking?`<div class="picker"><input id="vf-name" type="search" autocomplete="off" placeholder="名前・ふりがなで検索、または新しい名前を入力" value=""><div class="sugg" id="vf-sugg"></div></div>`:''}
+        ${picking?`<div class="picker"><input id="vf-name" type="search" autocomplete="off" placeholder="名前・ふりがな・No.で検索、または新しい名前を入力" value=""><div class="sugg" id="vf-sugg"></div></div>`:''}
         <button class="lrow" id="vf-memos" ${c?'':'disabled'}><span>来店者とのやりとり（メモ一覧）</span><span class="rv"></span><span class="chev">›</span></button>
       </div>
       <label class="qt"><span>時間クイック入力表示</span><input type="checkbox" id="vf-quick" class="sw" ${quick?'checked':''}></label>
@@ -747,9 +870,9 @@ function openVisitForm(v0,preset={}){
     const nameI=$('#vf-name',body);
     if(nameI){const sugg=$('#vf-sugg',body);
       const upd=()=>{const raw=norm(nameI.value),q=nameKey(raw);
-        const m=q?[...D.customers.values()].filter(c=>nameKey(c.name).includes(q)||nameKey(c.kana).includes(q)).slice(0,8):[];
+        const m=q?[...D.customers.values()].filter(c=>(/^\d+$/.test(q)&&fmtNo(c.no).includes(q))||nameKey(c.name).includes(q)||nameKey(c.kana).includes(q)).slice(0,8):[];
         const exact=m.some(c=>nameKey(c.name)===q);
-        sugg.innerHTML=m.map(c=>`<button type="button" data-id="${c.id}">${esc(c.name)}<small>${stats(c).last?'最終 '+fmtD(stats(c).last):''}</small></button>`).join('')+(q&&!exact?`<button type="button" data-new="1">＋「${esc(raw)}」を新しいお客様として登録<small></small></button>`:'')};
+        sugg.innerHTML=m.map(c=>`<button type="button" data-id="${c.id}"><span><small class="cno">${fmtNo(c.no)}</small> ${esc(c.name)}</span><small>${stats(c).last?'最終 '+fmtD(stats(c).last):''}</small></button>`).join('')+(q&&!exact?`<button type="button" data-new="1">＋「${esc(raw)}」を新しいお客様として登録<small></small></button>`:'')};
       nameI.oninput=upd;
       sugg.onclick=e=>{const b=e.target.closest('button');if(!b)return;keep();
         if(b.dataset.new){const name=norm(nameI.value);ensureReal();let nc=findByName(name);if(!nc){nc={id:newId(),name,created:todayStr()};saveCustomer(nc)}cid=nc.id}else cid=b.dataset.id;
@@ -829,12 +952,22 @@ function openYearCmp(){
 function openSettings(){
   openSheet('データ管理',(body,s)=>{
     body.innerHTML=`<div class="tiles"><div class="tile"><small>お客様</small><b>${S.sample?0:D.customers.size}人</b></div><div class="tile"><small>来店記録</small><b>${S.sample?0:D.visits.size}件</b></div></div>
-      <p class="hint">${Store.mode==='db'?'データはあなたのアカウント専用の場所に保存されます。このページを他の人に共有しても、あなたのお客様情報は見えません。':'この端末の中にだけ保存しています。別の端末からは見えません。機種変更や万一に備えて、ときどきCSVで書き出しておいてください。'}</p>
+      <p class="hint">${Store.mode==='db'?'データはあなたのアカウント専用の場所に保存されます。このページを他の人に共有しても、あなたのお客様情報は見えません。':(Cloud.user?'この端末とクラウド（あなた専用の場所）の両方に保存しています。スマホの中のデータが消えても、ログインし直せば元に戻ります。':'この端末の中にだけ保存しています。別の端末からは見えません。機種変更や万一に備えて、ときどきCSVで書き出しておいてください。')}</p>
       ${Photos.ok?'<p class="hint" id="st-ph"></p>':''}
+      ${Store.mode==='local'?`<p class="hint">最後のバックアップ：${backupDays()==null?'まだありません':backupDays()+'日前'}。お客様と来店履歴の2つを書き出しておくと、万一のときに取り込み直せます。</p><p class="hint">保存の保護：${Store.persisted?'オン（スマホの空き容量が減っても消されにくい状態です）':'オフ（ホーム画面に追加したアイコンから使うとオンになりやすくなります）'}</p>`:''}
+      ${Cloud.enabled?`<div class="cloudbox"><b>クラウド保存</b><span>${Cloud.user?`ログイン中：${esc(Cloud.user.email||'')}<br>${Cloud.lastSync?'最終同期 '+new Date(Cloud.lastSync).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'まだ同期していません'}${Cloud.dirty.size?`・未送信 ${Cloud.dirty.size}件`:''}`:Cloud.ready?'ログインしていません':'クラウドにつながっていません（オフライン）'}</span><div class="btnrow">${Cloud.user?'<button class="btn sm primary" id="st-sync">今すぐ同期</button><button class="btn sm" id="st-out">ログアウト</button>':''}</div></div>`:''}
       <button class="btn primary" id="st-imp">CSVを取り込む</button>
       <div class="btnrow"><button class="btn" id="st-exc">顧客をCSVで書き出す</button><button class="btn" id="st-exv">来店履歴をCSVで書き出す</button></div>
+      ${Store.mode==='local'?'<button class="btn" id="st-hist">前の状態に戻す（自動の履歴）</button>':''}
+      <button class="btn" id="st-lock">パスコードロック${Lock.rec?"（オン）":"（オフ）"}</button>
       <div style="margin-top:12px"><button class="btn danger" id="st-wipe">すべてのデータを削除</button></div>`;
     $('#st-imp',body).onclick=()=>openImport();
+    $('#st-lock',body).onclick=()=>openLockSettings();
+    const hb=$('#st-hist',body);if(hb)hb.onclick=()=>openHistory();
+    const sy=$('#st-sync',body);if(sy)sy.onclick=async()=>{sy.disabled=true;await Cloud.sync();toast(Cloud.state==='ok'?'同期しました':'同期できませんでした。電波を確認してください');s.draw()};
+    const so=$('#st-out',body);if(so)so.onclick=e=>inlineConfirm(e.currentTarget,'ログアウトすると、このスマホの中のデータは消えます（クラウドには残ります）。もう一度ログインすれば戻ります。','ログアウトする',async()=>{
+      await Cloud.sync();if(Cloud.dirty.size){toast('まだ送れていない記録があります。電波のよい場所で同期してからログアウトしてください');return}
+      await Cloud.signOut();await Store.clearLocal();try{await IDB.del('owner')}catch(e){}location.reload()});
     if(Photos.ok)(async()=>{try{const n=await IDB.count('photos');let t=`写真 ${n}枚`;if(navigator.storage&&navigator.storage.estimate){const e=await navigator.storage.estimate();t+=`・使用量 約${Math.round((e.usage||0)/1048576)}MB`}const el=$('#st-ph',body);if(el)el.textContent=t+'。写真はCSVには入りません。'}catch(e){}})();
     $('#st-exc',body).onclick=()=>exportCustomers();
     $('#st-exv',body).onclick=()=>exportVisits();
@@ -846,21 +979,21 @@ function openSettings(){
 function toCSV(rows){return '﻿'+rows.map(r=>r.map(x=>{x=String(x??'');return /[",\n\r]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x}).join(',')).join('\r\n')}
 const stamp=()=>todayStr().replace(/-/g,'');
 function exportCustomers(){
-  const rows=[['名前','ふりがな','ニックネーム','電話番号','メール','誕生日','性別','住所','メモ','初回来店日','最終来店日','来店回数','合計金額']];
-  for(const c of D.customers.values()){const s=stats(c);rows.push([c.name,c.kana,c.nick,c.phone,c.email,c.birthday?(c.birthday.startsWith('0000')?c.birthday.slice(5).replace('-','/'):fmtD(c.birthday)):'',c.gender,c.address,c.memo,fmtD(s.first),fmtD(s.last),s.count,s.total])}
+  const rows=[['顧客番号','名前','ふりがな','ニックネーム','電話番号','メール','誕生日','性別','住所','メモ','初回来店日','最終来店日','来店回数','合計金額']];
+  for(const c of [...D.customers.values()].sort((a,b)=>(a.no||0)-(b.no||0))){const s=stats(c);rows.push([fmtNo(c.no),c.name,c.kana,c.nick,c.phone,c.email,c.birthday?(c.birthday.startsWith('0000')?c.birthday.slice(5).replace('-','/'):fmtD(c.birthday)):'',c.gender,c.address,c.memo,fmtD(s.first),fmtD(s.last),s.count,s.total])}
   saveFile(`顧客一覧_${stamp()}.csv`,toCSV(rows));
 }
 function exportVisits(){
-  const rows=[['名前','来店日','開始時刻','滞在時間(分)','金額','評価','カテゴリ','メモ']];
-  for(const v of [...D.visits.values()].sort(cmpVisit))rows.push([cname(v.cid),fmtD(v.date),v.start,v.dur,v.amount,v.rating,v.cat,v.memo]);
+  const rows=[['顧客番号','名前','来店日','開始時刻','滞在時間(分)','金額','評価','カテゴリ','メモ']];
+  for(const v of [...D.visits.values()].sort(cmpVisit))rows.push([fmtNo((D.customers.get(v.cid)||{}).no),cname(v.cid),fmtD(v.date),v.start,v.dur,v.amount,v.rating,v.cat,v.memo]);
   saveFile(`来店履歴_${stamp()}.csv`,toCSV(rows));
 }
 async function saveFile(name,data){
   const dl=await cap('downloads');
   if(dl){try{await dl.save({filename:name,data});toast('書き出しました');return}catch(e){if(e&&(e.code==='declined'))return;if(e&&e.code==='rate_limited'){toast('少し待ってからもう一度押してください');return}}}
   if(!window.claude){
-    try{const f=new File([data],name,{type:'text/csv'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==='AbortError')return}
-    try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast('書き出しました');return}catch(e){}}
+    try{const f=new File([data],name,{type:'text/csv'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});markBackup();return}}catch(e){if(e&&e.name==='AbortError')return}
+    try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove();markBackup();toast('書き出しました');return}catch(e){}}
   openSheet(name,(body)=>{body.innerHTML=`<p class="hint">この画面ではファイルを保存できないため、内容を表示しています。全部コピーして、メモ帳などに貼り付けて「.csv」で保存してください。</p><textarea class="out" readonly>${esc(data.replace(/^﻿/,''))}</textarea><button class="btn primary" id="cp">全部コピー</button>`;
     $('#cp',body).onclick=()=>{const t=$('textarea',body);t.select();try{navigator.clipboard.writeText(t.value).then(()=>toast('コピーしました'),()=>toast('選択した状態です。コピーしてください'))}catch(e){}}});
 }
@@ -886,12 +1019,12 @@ function pBirthday(s){const d=pDate(s);if(d)return d;const m=norm(s).match(/^(\d
 function pTime(s){const m=norm(s).match(/(\d{1,2})\s*[:時]\s*(\d{2})/);return m&&+m[1]<24?`${pad(m[1])}:${m[2]}`:''}
 function pDur(s){s=norm(s);if(!s)return 0;let m=s.match(/(\d+)\s*時間\s*(?:(\d+)\s*分)?/);if(m)return +m[1]*60+(+m[2]||0);m=s.match(/^(\d+):(\d{2})/);if(m)return +m[1]*60+ +m[2];m=s.match(/(\d+)\s*分/);if(m)return +m[1];const n=parseFloat(s);return isNaN(n)?0:Math.round(n)}
 function pNum(s){const n=parseFloat(norm(s).replace(/[,円¥￥\s]/g,''));return isNaN(n)?0:n}
-const CF=[['','取り込まない'],['name','名前'],['kana','ふりがな'],['nick','ニックネーム'],['phone','電話番号'],['email','メール'],['birthday','誕生日'],['gender','性別'],['address','住所'],['memo','メモ'],['first','初回来店日'],['last','最終来店日'],['count','来店回数'],['total','合計金額']];
-const VF=[['','取り込まない'],['name','名前'],['date','来店日'],['start','開始時刻'],['end','終了時刻'],['dur','滞在時間'],['amount','金額'],['rating','評価'],['cat','カテゴリ'],['memo','メモ']];
-const KW={last:/最終/,first:/初回/,count:/回数|来店数/,total:/合計|総額|累計|total/i,birthday:/誕生|生年月日|birth/i,kana:/ふりがな|フリガナ|カナ|よみ|読み/,nick:/ニックネーム|愛称|あだ名/,
+const CF=[['','取り込まない'],['no','顧客番号'],['name','名前'],['kana','ふりがな'],['nick','ニックネーム'],['phone','電話番号'],['email','メール'],['birthday','誕生日'],['gender','性別'],['address','住所'],['memo','メモ'],['first','初回来店日'],['last','最終来店日'],['count','来店回数'],['total','合計金額']];
+const VF=[['','取り込まない'],['no','顧客番号'],['name','名前'],['date','来店日'],['start','開始時刻'],['end','終了時刻'],['dur','滞在時間'],['amount','金額'],['rating','評価'],['cat','カテゴリ'],['memo','メモ']];
+const KW={no:/顧客番号|会員番号|顧客ID|会員ID|^ID$|^No\.?$|^番号$/i,last:/最終/,first:/初回/,count:/回数|来店数/,total:/合計|総額|累計|total/i,birthday:/誕生|生年月日|birth/i,kana:/ふりがな|フリガナ|カナ|よみ|読み/,nick:/ニックネーム|愛称|あだ名/,
   name:/名前|氏名|顧客名|表示名|お客様|来店者|^name$/i,phone:/電話|tel|携帯|phone/i,email:/メール|mail/i,gender:/性別/,address:/住所|address/i,memo:/メモ|備考|カルテ|コメント|note|memo/i,
   rating:/評価|rating/i,dur:/滞在|所要|施術時間|^時間|分\)?$/,start:/開始|start/i,end:/終了|end/i,date:/日付|来店日|日時|^date$/i,amount:/金額|お金|売上|料金|支払|会計|price|amount/i,cat:/カテゴリ|メニュー|category/i};
-const ORDER={customers:['last','first','count','total','birthday','kana','nick','name','phone','email','gender','address','memo'],visits:['rating','end','dur','start','date','amount','cat','memo','name']};
+const ORDER={customers:['no','last','first','count','total','birthday','kana','nick','name','phone','email','gender','address','memo'],visits:['no','rating','end','dur','start','date','amount','cat','memo','name']};
 function guessMap(head,type){const used=new Set();return head.map(h=>{h=norm(h);for(const k of ORDER[type]){if(!used.has(k)&&KW[k].test(h)){used.add(k);return k}}return ''})}
 function guessType(head){const h=head.map(norm).join('|');return /来店回数|最終来店|合計金額/.test(h)?'customers':(/日付|来店日|日時|開始/.test(h)&&/金額|お金|売上|料金/.test(h))?'visits':'customers'}
 
@@ -941,11 +1074,12 @@ function runImport(st){
   const idx=new Map();for(const c of D.customers.values())idx.set(nameKey(c.name),c);
   const rows=st.header?st.rows.slice(1):st.rows;const col=k=>st.map.indexOf(k);
   const get=(r,k)=>{const i=col(k);return i<0?'':(r[i]??'')};
-  const getC=name=>{let c=idx.get(nameKey(name));if(!c){c={id:newId(),name,created:todayStr()};idx.set(nameKey(name),c);D.customers.set(c.id,c);res.newC++;c._n=1}return c};
+  const getC=(name,no)=>{let c=no?findByNo(no):null;if(!c)c=idx.get(nameKey(name));if(c&&no&&!c.no&&!findByNo(no))c.no=no;if(!c){c={id:newId(),name,created:todayStr()};if(no&&!findByNo(no))c.no=no;idx.set(nameKey(name),c);D.customers.set(c.id,c);res.newC++;c._n=1}return c};
+  const rowNo=r=>{const v=norm(get(r,'no')).replace(/\D/g,'');return v?+v:0};
   const touched=new Set();
   if(st.type==='customers'){
     for(const r of rows){const name=norm(get(r,'name'));if(!name){res.skip++;continue}
-      const c=getC(name);if(!c._n&&!touched.has(c.id))res.updC++;touched.add(c.id);
+      const c=getC(name,rowNo(r));if(!c._n&&!touched.has(c.id))res.updC++;touched.add(c.id);
       for(const k of ['kana','nick','phone','email','gender','address']){const v=norm(get(r,k));if(v)c[k]=v}
       const memo=String(get(r,'memo')).trim();if(memo&&!(c.memo||'').includes(memo))c.memo=c.memo?c.memo+'\n'+memo:memo;
       const b=pBirthday(get(r,'birthday'));if(b)c.birthday=b;
@@ -961,7 +1095,7 @@ function runImport(st){
     const keys=new Set([...D.visits.values()].map(v=>`${v.cid}|${v.date}|${v.start||''}|${v.amount}`));
     const dateCol=col('date');
     for(const r of rows){const date=pDate(get(r,'date'))||pDate(get(r,'start'));const name=norm(get(r,'name'))||(date?'（名前なし）':'');if(!name||!date){res.skip++;continue}
-      const c=getC(name);if(c._n)Store.dirty.add(Store.cb(c.id));
+      const c=getC(name,rowNo(r));if(c._n)Store.dirty.add(Store.cb(c.id));
       const start=col('start')>=0?pTime(get(r,'start')):(dateCol>=0?pTime(r[dateCol]||''):'');
       const v={id:newId()+res.newV,cid:c.id,date,start,dur:col('dur')>=0?pDur(get(r,'dur')):(col('end')>=0&&start&&pTime(get(r,'end'))?((t=>{const [a,b]=start.split(':').map(Number),[c,d]=t.split(':').map(Number);return ((c*60+d)-(a*60+b)+1440)%1440})(pTime(get(r,'end')))):60),amount:pNum(get(r,'amount')),rating:Math.max(0,Math.min(5,Math.round(pNum(get(r,'rating'))))),cat:norm(get(r,'cat')),memo:String(get(r,'memo')).trim()};
       const k=`${v.cid}|${v.date}|${v.start}|${v.amount}`;if(keys.has(k)){res.dupV++;continue}
@@ -969,7 +1103,7 @@ function runImport(st){
     }
   }
   for(const c of D.customers.values())delete c._n;
-  D.ver++;Store.schedule();refreshUI();
+  D.ver++;{const mx=[...D.customers.values()].reduce((m,c)=>Math.max(m,c.no||0),0);if(mx>=(D.meta.nextNo||1)){D.meta.nextNo=mx+1;Store.dirty.add('meta')}}assignNos();Store.schedule();refreshUI();
   return res;
 }
 
@@ -981,11 +1115,12 @@ const ACT={
   yprev:()=>{S.year--;render()},ynext:()=>{S.year++;render()},ynow:()=>{S.year=new Date().getFullYear();render()},
   settings:()=>openSettings(),newVisit:()=>openVisitForm(null,{}),newCustomer:()=>openCustomerForm(null),bdays:()=>openBirthdays(),
   cust:t=>openCustomer(t.dataset.id),visit:t=>{const v=D.visits.get(t.dataset.id);if(v)openVisitForm(v)},day:t=>openDay(t.dataset.date),
-  sort:t=>{const k=t.dataset.key;S.sort=S.sort.key===k?{key:k,dir:-S.sort.dir}:{key:k,dir:k==='name'?1:-1};render()},
+  sort:t=>{const k=t.dataset.key;S.sort=S.sort.key===k?{key:k,dir:-S.sort.dir}:{key:k,dir:k==='name'||k==='no'?1:-1};render()},
   moreC:()=>{S.limit+=300;drawClist()},clearQ:()=>{S.q='';render()},
   calmode:t=>{S.calMode=t.dataset.mode;render()},calsize:t=>{S.calSize=+t.dataset.size;render()},
   metric:t=>{S.metric=t.dataset.m;render()},rankp:t=>{S.rankP=t.dataset.p;render()},an:t=>openAnalysis(t.dataset.kind),
   allstats:()=>openAllStats(),yearcmp:()=>openYearCmp(),import:()=>openImport(),
+  bkLater:()=>{S.bkLater=true;renderBanner()},
   sample:()=>{loadSample();render()},clearSample:()=>{ensureReal();render()}
 };
 document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=ACT[t.dataset.act];if(f){e.preventDefault();f(t,e)}});
@@ -993,10 +1128,251 @@ document.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.tar
   if(e.key==='Escape'&&sheets.length)sheets[sheets.length-1].close()});
 
 /* ---------- boot ---------- */
+/* ---------- passcode lock (this device only) ---------- */
+const Lock={rec:null,relockMin:5,hiddenAt:0,open:false,fails:0,until:0,
+  async load(){try{if(IDB.db)this.rec=await IDB.get('lock')||null}catch(e){}if(!this.rec){try{this.rec=JSON.parse(localStorage.getItem('andz-lock')||'null')}catch(e){}}return this.rec},
+  async store(rec){this.rec=rec;try{if(IDB.db){if(rec)await IDB.set('lock',rec);else await IDB.del('lock')}}catch(e){}try{if(rec)localStorage.setItem('andz-lock',JSON.stringify(rec));else localStorage.removeItem('andz-lock')}catch(e){}},
+  async hash(pin,salt){const buf=new TextEncoder().encode(salt+':'+pin);
+    if(window.crypto&&crypto.subtle){const h=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+    let h=5381;for(const b of buf)h=((h*33)^b)>>>0;return 'x'+h.toString(16)},
+  async set(pin){const salt=Math.random().toString(36).slice(2)+Date.now().toString(36);await this.store({salt,hash:await this.hash(pin,salt)})},
+  async check(pin){return !!this.rec&&(await this.hash(pin,this.rec.salt))===this.rec.hash},
+  /* full-screen keypad; resolves when the right code is entered */
+  show(){if(this.open)return Promise.resolve();this.open=true;$('#app').hidden=true;sheets.slice().forEach(x=>x.el.hidden=true);
+    return new Promise(done=>{
+      const el=document.createElement('div');el.className='lock';document.body.appendChild(el);let pin='';
+      el.innerHTML=`<div class="lk-in"><div class="lk-icon"><img src="apple-touch-icon.png" alt="" onerror="this.remove()"></div><h2>パスコードを入力</h2><div class="dots" aria-live="polite"></div><p class="lk-msg"></p>
+        <div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join('')}<button data-k="forgot" class="sm">忘れた</button><button data-k="0">0</button><button data-k="del" class="sm">削除</button></div></div>`;
+      const dots=$('.dots',el),msg=$('.lk-msg',el);
+      const paint=()=>{dots.innerHTML=Array.from({length:Math.max(4,pin.length)},(_,i)=>`<i class="${i<pin.length?'on':''}"></i>`).join('')};paint();
+      const tryIt=async()=>{
+        if(Date.now()<this.until){msg.textContent=`しばらく待ってからもう一度入力してください（あと${Math.ceil((this.until-Date.now())/1000)}秒）`;pin='';paint();return}
+        if(await this.check(pin)){this.fails=0;el.remove();this.open=false;$('#app').hidden=false;sheets.forEach(x=>x.el.hidden=false);done();return}
+        if(pin.length>=(this.rec.len||4)){this.fails++;el.querySelector('.lk-in').classList.remove('shake');void el.offsetWidth;el.querySelector('.lk-in').classList.add('shake');
+          if(this.fails>=5){this.until=Date.now()+30000;this.fails=0;msg.textContent='5回まちがえたので、30秒後にもう一度入力してください'}else msg.textContent='パスコードがちがいます';pin='';paint()}};
+      el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.k;
+        if(k==='del'){pin=pin.slice(0,-1);paint();return}
+        if(k==='forgot'){msg.innerHTML='パスコードは元に戻せません。どうしても開けない場合は、ホーム画面のアイコンを削除して追加し直すと、パスコードは消えます。<b>ただしデータもすべて消える</b>ので、CSVのバックアップから取り込み直してください。';return}
+        if(pin.length>=8)return;pin+=k;paint();msg.textContent='';if(pin.length===(this.rec.len||4))tryIt()});
+      document.addEventListener('keydown',function kd(e){if(!el.isConnected){document.removeEventListener('keydown',kd);return}
+        if(/^\d$/.test(e.key)){const b=el.querySelector(`[data-k="${e.key}"]`);b&&b.click()}else if(e.key==='Backspace'){el.querySelector('[data-k="del"]').click()}});
+    })}
+};
+document.addEventListener('visibilitychange',()=>{
+  if(!Lock.rec||!S.ready)return;
+  if(document.visibilityState==='hidden')Lock.hiddenAt=Date.now();
+  else if(Lock.hiddenAt&&Date.now()-Lock.hiddenAt>Lock.relockMin*60000)Lock.show();
+});
+function openLockSettings(){
+  openSheet('パスコードロック',(body,s)=>{
+    let step=0,first='',pin='';const on=!!Lock.rec;
+    const draw=()=>{
+      if(step===0){body.innerHTML=`<p class="hint">アプリを開くときに、4桁の数字を入力しないと中が見られないようにします。アプリを閉じて${Lock.relockMin}分たつと、またロックがかかります。</p>
+        <p class="hint">パスコードはこのiPhoneの中にだけ保存されます。忘れると元に戻せないので、メモしておいてください。</p>
+        <div class="btnrow"><button class="btn primary" id="lk-set">${on?'パスコードを変更':'パスコードを設定'}</button></div>${on?'<div><button class="btn danger" id="lk-off">ロックを解除する</button></div>':''}`;
+        $('#lk-set',body).onclick=()=>{step=1;pin='';draw()};
+        const off=$('#lk-off',body);if(off)off.onclick=e=>inlineConfirm(e.currentTarget,'パスコードロックを解除します。','解除する',async()=>{await Lock.store(null);toast('ロックを解除しました');s.close()});
+        return}
+      body.innerHTML=`<h3 style="text-align:center">${step===1?'新しいパスコード（4桁）':'もう一度入力してください'}</h3><div class="dots">${[0,1,2,3].map(i=>`<i class="${i<pin.length?'on':''}"></i>`).join('')}</div><p class="hint warn" id="lk-err" style="text-align:center"></p>
+        <div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-k="${n}">${n}</button>`).join('')}<span></span><button data-k="0">0</button><button data-k="del" class="sm">削除</button></div>`;
+      body.querySelector('.pad').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.k;
+        if(k==='del'){pin=pin.slice(0,-1);draw();return}
+        pin+=k;if(pin.length<4){draw();return}
+        if(step===1){first=pin;pin='';step=2;draw();return}
+        if(pin!==first){pin='';step=1;draw();$('#lk-err',body).textContent='2回の入力が一致しませんでした。最初からもう一度入力してください';return}
+        await Lock.set(pin);Lock.rec.len=4;await Lock.store(Lock.rec);toast('パスコードを設定しました');s.close()};
+    };draw();
+  });
+}
+
+/* ---------- cloud sync (Firebase, optional) ----------
+   The phone keeps its own copy (fast, works offline). When signed in, every change is also
+   sent to the user's own area in Firestore: users/{uid}/b/{bucket}. Records carry u (last change time);
+   on merge the newer one wins, and deletions travel as tombstones {id,del,u,b}. */
+const FIREBASE_CONFIG=window.ANDZ_FIREBASE||null;
+const FB_VER='10.14.1';
+function loadScript(src){return new Promise((res,rej)=>{const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('load '+src));document.head.appendChild(e)})}
+const Cloud={ready:false,user:null,fs:null,auth:null,dirty:new Set(),busy:false,timer:null,state:'off',lastSync:0,
+  get enabled(){return !!FIREBASE_CONFIG},
+  async init(){
+    if(!FIREBASE_CONFIG)return;
+    try{if(!window.firebase||!firebase.firestore){for(const f of ['app','auth','firestore'])await loadScript(`https://www.gstatic.com/firebasejs/${FB_VER}/firebase-${f}-compat.js`)}
+      if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+      this.auth=firebase.auth();this.fs=firebase.firestore();
+      this.user=await new Promise(res=>{const un=this.auth.onAuthStateChanged(u=>{un();res(u)})});
+      this.ready=true;
+    }catch(e){console.error(e);this.setState('offline')}
+  },
+  setState(st){this.state=st;const el=$('#cloudchip');if(!el)return;
+    const t={off:'',offline:'オフライン（あとで送ります）',syncing:'クラウドと同期中…',ok:'',error:'クラウドに送れていません',signedout:'クラウド未ログイン'}[st]||'';
+    el.textContent=t;el.hidden=!t;el.className=st==='error'||st==='signedout'?'warn':''},
+  col(){return this.fs.collection('users').doc(this.user.uid).collection('b')},
+  bucketItems(id){const out=[];
+    if(id.startsWith('c-')){for(const c of D.customers.values())if(Store.cb(c.id)===id)out.push(c)}
+    else for(const v of D.visits.values())if(Store.vb(v)===id)out.push(v);
+    for(const t of Store.tomb.values())if(t.b===id)out.push(t);
+    return out.map(r=>JSON.parse(JSON.stringify(r)))},
+  localOf(id){return D.customers.get(id)||D.visits.get(id)||Store.tomb.get(id)||null},
+  /* apply one record from the cloud if it is newer than ours; returns true if something changed */
+  applyRemote(r,bucket){
+    const loc=this.localOf(r.id);if(loc&&(loc.u||0)>=(r.u||0))return false;
+    const isC=bucket.startsWith('c-');const map=isC?D.customers:D.visits;
+    if(r.del){D.customers.delete(r.id);D.visits.delete(r.id);Store.tomb.set(r.id,{id:r.id,del:1,u:r.u||0,b:r.b||bucket})}
+    else{const o={...r};map.set(r.id,o);Store.tomb.delete(r.id)}
+    return true},
+  /* full two-way sync: read every bucket, take what is newer, send what we have newer */
+  async sync(){
+    if(!this.ready||!this.user||this.busy||!Store.loadOk||S.sample)return;
+    this.busy=true;this.setState('syncing');
+    try{
+      if(Store.pending)await Store.flushNow();
+      const snap=await this.col().get();
+      const remote=new Map();let rnext=1;
+      snap.forEach(d=>{const b=d.data()||{};if(d.id==='meta'){rnext=+b.nextNo||1;return}
+        for(const r of b.items||[]){const o=remote.get(r.id);if(!o||(r.u||0)>(o.r.u||0))remote.set(r.id,{r,b:d.id})}});
+      let changed=false;
+      for(const {r,b} of remote.values())if(this.applyRemote(r,b))changed=true;
+      for(const c of D.customers.values()){const x=remote.get(c.id);if(!x||(c.u||0)>(x.r.u||0))this.dirty.add(Store.cb(c.id))}
+      for(const v of D.visits.values()){const x=remote.get(v.id);if(!x||(v.u||0)>(x.r.u||0))this.dirty.add(Store.vb(v))}
+      for(const t of Store.tomb.values()){const x=remote.get(t.id);if(x&&(t.u||0)>(x.r.u||0))this.dirty.add(t.b)}
+      if(rnext>(D.meta.nextNo||1)){D.meta.nextNo=rnext;changed=true}else if((D.meta.nextNo||1)>rnext)this.dirty.add('meta');
+      if(changed){if(fixDupNos())changed=true;D.ver++;await Store.saveLocal(false);refreshUI()}
+      await this.push(snap.empty);
+      this.lastSync=Date.now();this.setState(this.dirty.size?'error':'ok');
+    }catch(e){console.error(e);this.setState(navigator.onLine===false?'offline':'error')}
+    finally{this.busy=false;try{await IDB.set('cloudDirty',[...this.dirty])}catch(e){}}
+  },
+  schedulePush(){if(!this.ready||!this.user)return;clearTimeout(this.timer);this.timer=setTimeout(()=>this.push(false),1500)},
+  /* send the buckets we changed. Each one is merged with what is in the cloud inside a transaction,
+     so a change made on another phone in the meantime is kept, not overwritten. */
+  async push(firstUpload){
+    if(!this.ready||!this.user||this.pushing)return;
+    if(!this.dirty.size)return;
+    this.pushing=true;let gotRemote=false;
+    try{
+      const ids=[...this.dirty];
+      if(firstUpload){
+        for(let i=0;i<ids.length;i+=50){const batch=this.fs.batch();
+          for(const id of ids.slice(i,i+50))batch.set(this.col().doc(id),id==='meta'?{nextNo:D.meta.nextNo||1}:{items:this.bucketItems(id)});
+          await batch.commit();ids.slice(i,i+50).forEach(id=>this.dirty.delete(id))}
+      }else{
+        const one=async id=>{
+          const ref=this.col().doc(id);
+          await this.fs.runTransaction(async tx=>{
+            const d=await tx.get(ref);const cur=d.exists?(d.data()||{}):{};
+            if(id==='meta'){const n=Math.max(+cur.nextNo||1,D.meta.nextNo||1);if(n>(D.meta.nextNo||1)){D.meta.nextNo=n;gotRemote=true}tx.set(ref,{nextNo:n});return}
+            const mine=new Map(this.bucketItems(id).map(r=>[r.id,r]));
+            for(const r of cur.items||[]){const m=mine.get(r.id);
+              if(m){if((r.u||0)>(m.u||0)){mine.set(r.id,r);if(this.applyRemote(r,id))gotRemote=true}continue}
+              const loc=this.localOf(r.id);
+              if(!loc||(r.u||0)>(loc.u||0)){mine.set(r.id,r);if(this.applyRemote(r,id))gotRemote=true}}
+            tx.set(ref,{items:[...mine.values()]});
+          });
+          this.dirty.delete(id);
+        };
+        for(let i=0;i<ids.length;i+=4)await Promise.all(ids.slice(i,i+4).map(one));
+      }
+      if(gotRemote){fixDupNos();D.ver++;await Store.saveLocal(false);refreshUI()}
+      this.setState('ok');
+    }catch(e){console.error(e);this.setState(navigator.onLine===false?'offline':'error')}
+    finally{this.pushing=false;try{await IDB.set('cloudDirty',[...this.dirty])}catch(e){}}
+  },
+  async signIn(email,pw){await this.auth.signInWithEmailAndPassword(email,pw);this.user=this.auth.currentUser},
+  async signOut(){await this.auth.signOut();this.user=null}
+};
+/* two phones may hand out the same customer number at the same time; give the later one a new number */
+function fixDupNos(){const seen=new Map();let ch=false;
+  for(const c of [...D.customers.values()].sort((a,b)=>(a.u||0)-(b.u||0))){if(!c.no)continue;if(seen.has(c.no)){c.no=D.meta.nextNo++;c.u=Date.now();Cloud.dirty.add(Store.cb(c.id));Cloud.dirty.add('meta');ch=true}else seen.set(c.no,c)}
+  return ch}
+function fbMsg(e){const c=(e&&e.code)||'';
+  if(/wrong-password|invalid-credential|invalid-login|user-not-found/.test(c))return 'メールアドレスかパスワードがちがいます';
+  if(/invalid-email/.test(c))return 'メールアドレスの形がちがいます';
+  if(/too-many-requests/.test(c))return '何度もまちがえたため、しばらく待ってからもう一度お試しください';
+  if(/network/.test(c))return 'インターネットにつながっていません。電波のよい場所でもう一度お試しください';
+  return 'ログインできませんでした（'+c+'）'}
+/* sign-in screen; resolves when signed in. Account switching on one phone clears the old account's copy first. */
+function showLogin(){return new Promise(done=>{
+  $('#app').hidden=true;const el=document.createElement('div');el.className='lock';
+  el.innerHTML=`<form class="lk-in login" autocomplete="on"><div class="lk-icon"><img src="apple-touch-icon.png" alt="" onerror="this.remove()"></div><h2>ログイン</h2>
+    <p class="hint" style="text-align:center">お客様のデータは、あなた専用のクラウドの場所に自動で保存されます。スマホを替えても、同じメールアドレスでログインすれば元どおりです。</p>
+    <label class="field"><span>メールアドレス</span><input id="lg-mail" type="email" autocomplete="username" required></label>
+    <label class="field"><span>パスワード</span><input id="lg-pw" type="password" autocomplete="current-password" required></label>
+    <p class="lk-msg" id="lg-msg"></p>
+    <button class="btn primary" style="width:100%" id="lg-go">ログイン</button>
+    <button type="button" class="btn sm" id="lg-forgot">パスワードを忘れた</button></form>`;
+  document.body.appendChild(el);
+  const msg=$('#lg-msg',el);
+  $('form',el).addEventListener('submit',async e=>{e.preventDefault();const btn=$('#lg-go',el);btn.disabled=true;msg.textContent='ログインしています…';
+    try{await Cloud.signIn($('#lg-mail',el).value.trim(),$('#lg-pw',el).value);el.remove();$('#app').hidden=false;done()}
+    catch(err){msg.textContent=fbMsg(err);btn.disabled=false}});
+  $('#lg-forgot',el).onclick=async()=>{const m=$('#lg-mail',el).value.trim();if(!m){msg.textContent='先にメールアドレスを入力してください';return}
+    try{await Cloud.auth.sendPasswordResetEmail(m);msg.textContent='パスワードを設定し直すメールを送りました。メールを確認してください'}catch(err){msg.textContent=fbMsg(err)}};
+})}
+/* after sign-in: decide what to do with data already on this phone */
+async function adoptAccount(){
+  let owner=null;try{owner=await IDB.get('owner')}catch(e){}
+  const uid=Cloud.user.uid;
+  if(owner&&owner!==uid){await Store.clearLocal()}
+  else if(!owner&&(D.customers.size||D.visits.size)){
+    let cloudHas=false;try{const q=await Cloud.col().limit(1).get();cloudHas=!q.empty}catch(e){}
+    if(cloudHas){const keep=await askChoice('この端末のデータをどうしますか？',`このスマホにはお客様${D.customers.size}人・来店${D.visits.size}件のデータがあり、クラウドにも別のデータがあります。`,[['cloud','クラウドのデータを使う（おすすめ）','このスマホの分は消して、クラウドの内容に置きかえます。'],['merge','両方を合わせる','同じお客様が2人ずつになることがあります。']]);
+      if(keep==='cloud')await Store.clearLocal()}
+    else{for(const c of D.customers.values())Cloud.dirty.add(Store.cb(c.id));for(const v of D.visits.values())Cloud.dirty.add(Store.vb(v));Cloud.dirty.add('meta')}
+  }
+  try{await IDB.set('owner',uid)}catch(e){}
+}
+function askChoice(title,text,opts){return new Promise(done=>{const el=document.createElement('div');el.className='lock';
+  el.innerHTML=`<div class="lk-in" style="max-width:380px"><h2>${esc(title)}</h2><p class="hint">${esc(text)}</p>${opts.map(([k,l,d])=>`<button class="btn ${k===opts[0][0]?'primary':''}" data-k="${k}" style="width:100%;flex-direction:column;align-items:flex-start"><span>${esc(l)}</span><small style="font-weight:400;opacity:.8">${esc(d)}</small></button>`).join('')}</div>`;
+  document.body.appendChild(el);el.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{el.remove();done(b.dataset.k)})})}
+
+/* ---------- automatic history: one copy per day (kept 7 days) ---------- */
+const Hist={
+  async index(){try{return (await IDB.get('snapindex'))||[]}catch(e){return []}},
+  async save(label){const ix=await this.index();const k='snap-'+Date.now();
+    await IDB.set(k,{c:[...D.customers.values()],v:[...D.visits.values()],meta:{...D.meta}});
+    ix.push({k,t:Date.now(),day:todayStr(),c:D.customers.size,v:D.visits.size,label:label||''});
+    const keep=ix.filter(x=>x.label).slice(-3).concat(ix.filter(x=>!x.label).slice(-7)).sort((a,b)=>a.t-b.t);
+    for(const x of ix)if(!keep.includes(x))try{await IDB.del(x.k)}catch(e){}
+    await IDB.set('snapindex',keep)},
+  async daily(){if(Store.mode!=='local'||!Store.loadOk||S.sample||(!D.customers.size&&!D.visits.size))return;
+    try{const ix=await this.index();if(!ix.some(x=>x.day===todayStr()&&!x.label))await this.save('')}catch(e){console.error(e)}},
+  async restore(x){const snap=await IDB.get(x.k);if(!snap)throw new Error('none');
+    await this.save('戻す前の状態');
+    const next=Math.max(D.meta.nextNo||1,(snap.meta&&snap.meta.nextNo)||1);
+    D.customers.clear();D.visits.clear();snap.c.forEach(c=>D.customers.set(c.id,{...c}));snap.v.forEach(v=>D.visits.set(v.id,{...v}));D.meta={nextNo:next};D.ver++;
+    await Store.saveLocal(true);refreshUI()}
+};
+function openHistory(){
+  openSheet('前の状態に戻す',async(body,s)=>{
+    const ix=(await Hist.index()).slice().reverse();
+    body.innerHTML=`<p class="hint">毎日、その日に最初に開いたときの状態を自動で残しています（7日分）。まちがえて消したときなどに、その時点の状態に戻せます。戻す直前の状態も残るので、やり直しもできます。</p>
+      ${ix.length?ix.map((x,i)=>`<div class="hrow" style="cursor:default"><span class="d">${new Date(x.t).toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</span><span class="s">${esc(x.label||'その日の最初')}</span><span><button class="btn sm" data-i="${i}">この状態に戻す</button></span><span class="m">お客様${x.c}人・来店${x.v}件</span></div>`).join(''):'<p class="muted">まだ記録がありません。明日以降、自動で残ります。</p>'}`;
+    body.querySelectorAll('[data-i]').forEach(b=>b.onclick=e=>{const x=ix[+b.dataset.i];inlineConfirm(e.currentTarget,`${new Date(x.t).toLocaleString('ja-JP')} の状態（お客様${x.c}人・来店${x.v}件）に戻します。今の状態も履歴に残ります。`,'戻す',async()=>{
+      try{await Hist.restore(x);toast('前の状態に戻しました');s.close()}catch(err){toast('戻せませんでした')}})});
+  });
+}
+
+function showFatal(){
+  $('#app').hidden=true;const el=document.createElement('div');el.className='lock';
+  el.innerHTML=`<div class="lk-in" style="max-width:360px"><h2>データを読み込めませんでした</h2><p class="hint" style="text-align:center">この端末の保存場所を開けませんでした。データを守るため、このまま入力はできないようにしています。<br>アプリを完全に閉じてから、もう一度開いてください。</p><button class="btn primary" onclick="location.reload()">もう一度読み込む</button><p class="hint" style="text-align:center;font-size:11px">${esc(String(Store.loadErr&&(Store.loadErr.name||Store.loadErr.message)||''))}</p></div>`;
+  document.body.appendChild(el);
+}
+
 (async()=>{
   await Store.init();
-  if(!D.customers.size&&!D.visits.size)loadSample();
+  if(await Lock.load())await Lock.show();
+  if(Store.mode==='local'&&!Store.loadOk){showFatal();return}
+  if(Store.mode==='local'&&Cloud.enabled){
+    await Cloud.init();
+    if(Cloud.ready&&!Cloud.user)await showLogin();
+    if(Cloud.ready&&Cloud.user){await adoptAccount();Cloud.sync()}
+  }
+  if(assignNos())Store.schedule();
+  let had=0;try{had=+(localStorage.getItem('andz-count')||0)}catch(e){}
+  if(Store.mode==='local'&&!D.customers.size&&!D.visits.size&&had>0)S.missing=true;
   S.ready=true;render();
+  Hist.daily();
+  if(Store.migrated)toast('データを新しい保存方式に移しました');
 })();
 </script>
 
