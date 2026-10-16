@@ -284,6 +284,10 @@ svg.ic{width:13px;height:13px;vertical-align:-2px}
 .cloudbox span{color:var(--muted);line-height:1.6}
 .login .field{width:100%}
 .login .btn.sm{background:transparent;color:var(--muted)}
+.bkbox .btn{width:100%}
+.bkbox .btnrow .btn{width:auto}
+.bkph{display:flex;align-items:center;gap:8px;color:var(--fg);font-size:13px}
+.bkph input{width:18px;height:18px}
 #toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#f3f3f5;color:#111;padding:10px 16px;border-radius:999px;font-size:14px;font-weight:600;z-index:40;max-width:calc(100% - 32px);text-align:center}
 #savechip{position:fixed;top:calc(8px + var(--sat-top));right:12px;background:var(--card);color:var(--muted);font-size:11px;padding:4px 10px;border-radius:999px;z-index:30}
 .loading{padding:60px 0;text-align:center;color:var(--muted)}
@@ -607,6 +611,7 @@ function renderBanner(){
 }
 function backupDays(){let t=null;try{t=localStorage.getItem('andz-lastbackup')}catch(e){}return t?Math.floor((Date.now()-+t)/864e5):null}
 function backupDue(){if(S.sample||S.bkLater||Store.mode!=='local'||!D.visits.size||Cloud.user)return false;const d=backupDays();return d==null||d>=7}
+function lastBackupText(){let t=null;try{t=localStorage.getItem('andz-lastbackup')}catch(e){}if(!t)return 'まだありません';const d=new Date(+t);return d.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})+'（'+(backupDays()?backupDays()+'日前':'今日')+'）'}
 function markBackup(){try{localStorage.setItem('andz-lastbackup',String(Date.now()))}catch(e){}S.bkLater=false;renderBanner()}
 function render(){
   if(!S.ready)return;
@@ -639,7 +644,7 @@ const starHtml=r=>`<span class="star" aria-label="評価${r||0}"><svg viewBox="0
 const cname=cid=>{const c=D.customers.get(cid);return c?c.name:'（削除済み）'};
 function visitRows(vs){return vs.map(v=>`<div class="vrow" data-act="visit" data-id="${v.id}" role="button" tabindex="0"><span><span class="pill">${esc(cname(v.cid))}</span></span><span>${fmtDur(v.dur)}</span><span>${yen(v.amount)}</span><span>${starHtml(v.rating)}</span><span>${v.photos&&v.photos.length?'<i class="pmark">'+camSvg+'</i>':''}${esc((v.memo||'').replace(/\n/g,' '))}</span></div>`).join('')}
 const vhead=`<div class="vhead"><span>名前</span><span>滞在時間</span><span>金額</span><span>評価</span><span>メモ</span></div>`;
-function emptyState(){if(S.missing)return `<div class="empty"><h2>保存されていたデータが見つかりません</h2><p>この端末には前にお客様が保存されていましたが、今は見つかりませんでした。スマホの「ストレージのクリーンアップ」やブラウザの「サイトデータ削除」で消された可能性があります。バックアップのCSVがあれば取り込んでください。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button></div></div>`;return `<div class="empty"><h2>まだお客様が登録されていません</h2><p>今お使いのアプリから書き出したCSVを取り込むと、お客様と来店履歴をそのまま移せます。1件ずつ登録することもできます。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button><button class="btn" data-act="newVisit">来店を記録</button><button class="btn" data-act="sample">サンプルで試す</button></div></div>`}
+function emptyState(){if(S.missing)return `<div class="empty"><h2>保存されていたデータが見つかりません</h2><p>この端末には前にお客様が保存されていましたが、今は見つかりませんでした。スマホの「ストレージのクリーンアップ」やブラウザの「サイトデータ削除」で消された可能性があります。バックアップのファイルかCSVがあれば、そこから戻せます。</p><div class="row"><button class="btn primary" data-act="restoreFile">バックアップから復元</button><button class="btn" data-act="import">CSVを取り込む</button></div><input type="file" id="rs-empty" accept=".json,.txt,application/json,text/plain" hidden></div>`;return `<div class="empty"><h2>まだお客様が登録されていません</h2><p>今お使いのアプリから書き出したCSVを取り込むと、お客様と来店履歴をそのまま移せます。1件ずつ登録することもできます。</p><div class="row"><button class="btn primary" data-act="import">CSVを取り込む</button><button class="btn" data-act="newVisit">来店を記録</button><button class="btn" data-act="sample">サンプルで試す</button></div></div>`}
 const monthVisits=(y,m)=>{const k=`${y}-${pad(m)}`;return [...D.visits.values()].filter(v=>v.date.startsWith(k))};
 
 /* ---------- tab: input ---------- */
@@ -952,23 +957,30 @@ function openYearCmp(){
 function openSettings(){
   openSheet('データ管理',(body,s)=>{
     body.innerHTML=`<div class="tiles"><div class="tile"><small>お客様</small><b>${S.sample?0:D.customers.size}人</b></div><div class="tile"><small>来店記録</small><b>${S.sample?0:D.visits.size}件</b></div></div>
-      <p class="hint">${Store.mode==='db'?'データはあなたのアカウント専用の場所に保存されます。このページを他の人に共有しても、あなたのお客様情報は見えません。':(Cloud.user?'この端末とクラウド（あなた専用の場所）の両方に保存しています。スマホの中のデータが消えても、ログインし直せば元に戻ります。':'この端末の中にだけ保存しています。別の端末からは見えません。機種変更や万一に備えて、ときどきCSVで書き出しておいてください。')}</p>
+      <p class="hint">${Store.mode==='db'?'データはあなたのアカウント専用の場所に保存されます。このページを他の人に共有しても、あなたのお客様情報は見えません。':(Cloud.user?'この端末とクラウド（あなた専用の場所）の両方に保存しています。スマホの中のデータが消えても、ログインし直せば元に戻ります。':'この端末の中にだけ保存しています。別の端末からは見えません。機種変更や万一に備えて、ときどき下の「今すぐバックアップ」を押してください。')}</p>
       ${Photos.ok?'<p class="hint" id="st-ph"></p>':''}
-      ${Store.mode==='local'?`<p class="hint">最後のバックアップ：${backupDays()==null?'まだありません':backupDays()+'日前'}。お客様と来店履歴の2つを書き出しておくと、万一のときに取り込み直せます。</p><p class="hint">保存の保護：${Store.persisted?'オン（スマホの空き容量が減っても消されにくい状態です）':'オフ（ホーム画面に追加したアイコンから使うとオンになりやすくなります）'}</p>`:''}
+      ${Store.mode==='local'?`<div class="cloudbox bkbox"><b>バックアップと復元</b><span>前回のバックアップ：${lastBackupText()}</span>
+        <label class="bkph"><input type="checkbox" id="st-bkph" ${S.bkPhotos!==false?'checked':''}> 写真も含める</label>
+        <button class="btn primary" id="st-bk">今すぐバックアップ</button>
+        <span class="hint">共有メニューが開くので、iCloud Drive や Google ドライブ、「ファイル」に保存してください。</span>
+        <div class="btnrow"><button class="btn" id="st-rs">ファイルから復元</button><button class="btn" id="st-hist">履歴から戻す</button></div>
+        <input type="file" id="st-rsf" accept=".json,.txt,application/json,text/plain" hidden></div>
+        <p class="hint">保存の保護：${Store.persisted?'オン（スマホの空き容量が減っても消されにくい状態です）':'オフ（ホーム画面に追加したアイコンから使うとオンになりやすくなります）'}</p>`:''}
       ${Cloud.enabled?`<div class="cloudbox"><b>クラウド保存</b><span>${Cloud.user?`ログイン中：${esc(Cloud.user.email||'')}<br>${Cloud.lastSync?'最終同期 '+new Date(Cloud.lastSync).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):'まだ同期していません'}${Cloud.dirty.size?`・未送信 ${Cloud.dirty.size}件`:''}`:Cloud.ready?'ログインしていません':'クラウドにつながっていません（オフライン）'}</span><div class="btnrow">${Cloud.user?'<button class="btn sm primary" id="st-sync">今すぐ同期</button><button class="btn sm" id="st-out">ログアウト</button>':''}</div></div>`:''}
       <button class="btn primary" id="st-imp">CSVを取り込む</button>
       <div class="btnrow"><button class="btn" id="st-exc">顧客をCSVで書き出す</button><button class="btn" id="st-exv">来店履歴をCSVで書き出す</button></div>
-      ${Store.mode==='local'?'<button class="btn" id="st-hist">前の状態に戻す（自動の履歴）</button>':''}
       <button class="btn" id="st-lock">パスコードロック${Lock.rec?"（オン）":"（オフ）"}</button>
       <div style="margin-top:12px"><button class="btn danger" id="st-wipe">すべてのデータを削除</button></div>`;
     $('#st-imp',body).onclick=()=>openImport();
     $('#st-lock',body).onclick=()=>openLockSettings();
     const hb=$('#st-hist',body);if(hb)hb.onclick=()=>openHistory();
+    const bk=$('#st-bk',body);if(bk)bk.onclick=async()=>{S.bkPhotos=$('#st-bkph',body).checked;bk.disabled=true;bk.textContent='準備しています…';try{await makeBackup(S.bkPhotos)}finally{s.draw()}};
+    const rs=$('#st-rs',body);if(rs){rs.onclick=()=>$('#st-rsf',body).click();$('#st-rsf',body).onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)openRestore(f)}}
     const sy=$('#st-sync',body);if(sy)sy.onclick=async()=>{sy.disabled=true;await Cloud.sync();toast(Cloud.state==='ok'?'同期しました':'同期できませんでした。電波を確認してください');s.draw()};
     const so=$('#st-out',body);if(so)so.onclick=e=>inlineConfirm(e.currentTarget,'ログアウトすると、このスマホの中のデータは消えます（クラウドには残ります）。もう一度ログインすれば戻ります。','ログアウトする',async()=>{
       await Cloud.sync();if(Cloud.dirty.size){toast('まだ送れていない記録があります。電波のよい場所で同期してからログアウトしてください');return}
       await Cloud.signOut();await Store.clearLocal();try{await IDB.del('owner')}catch(e){}location.reload()});
-    if(Photos.ok)(async()=>{try{const n=await IDB.count('photos');let t=`写真 ${n}枚`;if(navigator.storage&&navigator.storage.estimate){const e=await navigator.storage.estimate();t+=`・使用量 約${Math.round((e.usage||0)/1048576)}MB`}const el=$('#st-ph',body);if(el)el.textContent=t+'。写真はCSVには入りません。'}catch(e){}})();
+    if(Photos.ok)(async()=>{try{const n=await IDB.count('photos');let t=`写真 ${n}枚`;if(navigator.storage&&navigator.storage.estimate){const e=await navigator.storage.estimate();t+=`・使用量 約${Math.round((e.usage||0)/1048576)}MB`}const el=$('#st-ph',body);if(el)el.textContent=t+'。写真はCSVには入りませんが、バックアップには入ります。'}catch(e){}})();
     $('#st-exc',body).onclick=()=>exportCustomers();
     $('#st-exv',body).onclick=()=>exportVisits();
     $('#st-wipe',body).onclick=e=>inlineConfirm(e.currentTarget,'お客様と来店記録をすべて削除します。元に戻せません。先にCSVで書き出しておくと安心です。','すべて削除する',async()=>{
@@ -988,14 +1000,53 @@ function exportVisits(){
   for(const v of [...D.visits.values()].sort(cmpVisit))rows.push([fmtNo((D.customers.get(v.cid)||{}).no),cname(v.cid),fmtD(v.date),v.start,v.dur,v.amount,v.rating,v.cat,v.memo]);
   saveFile(`来店履歴_${stamp()}.csv`,toCSV(rows));
 }
-async function saveFile(name,data){
+async function saveFile(name,data,type='text/csv'){
   const dl=await cap('downloads');
   if(dl){try{await dl.save({filename:name,data});toast('書き出しました');return}catch(e){if(e&&(e.code==='declined'))return;if(e&&e.code==='rate_limited'){toast('少し待ってからもう一度押してください');return}}}
   if(!window.claude){
-    try{const f=new File([data],name,{type:'text/csv'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});markBackup();return}}catch(e){if(e&&e.name==='AbortError')return}
-    try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();a.remove();markBackup();toast('書き出しました');return}catch(e){}}
+    for(const [n,t] of [[name,type],type==='application/json'?[name.replace(/\.json$/,'.txt'),'text/plain']:null].filter(Boolean)){try{const f=new File([data],n,{type:t});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:n});markBackup();return}}catch(e){if(e&&e.name==='AbortError')return}}
+    try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove();markBackup();toast('書き出しました');return}catch(e){}}
   openSheet(name,(body)=>{body.innerHTML=`<p class="hint">この画面ではファイルを保存できないため、内容を表示しています。全部コピーして、メモ帳などに貼り付けて「.csv」で保存してください。</p><textarea class="out" readonly>${esc(data.replace(/^﻿/,''))}</textarea><button class="btn primary" id="cp">全部コピー</button>`;
     $('#cp',body).onclick=()=>{const t=$('textarea',body);t.select();try{navigator.clipboard.writeText(t.value).then(()=>toast('コピーしました'),()=>toast('選択した状態です。コピーしてください'))}catch(e){}}});
+}
+
+/* ---------- full backup file (.json) and restore ---------- */
+const blobToDataURL=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(b)});
+async function makeBackup(withPhotos){
+  if(S.sample){toast('サンプル表示中はバックアップできません');return}
+  if(Store.pending)await Store.flushNow();
+  const data={app:'andz-crm',version:1,created:new Date().toISOString(),customers:[...D.customers.values()],visits:[...D.visits.values()],meta:D.meta,photos:{}};
+  if(withPhotos&&Photos.ok){const ids=new Set();for(const v of D.visits.values())(v.photos||[]).forEach(id=>ids.add(id));
+    for(const id of ids){try{const b=await IDB.get(id,'photos');if(b)data.photos[id]=await blobToDataURL(b)}catch(e){}}}
+  const d=new Date(),name=`andz-backup_${stamp()}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  await saveFile(name,JSON.stringify(data),'application/json');
+}
+async function readBackup(file){
+  const text=await file.text();let j;try{j=JSON.parse(text)}catch(e){throw new Error('このファイルはバックアップファイルではありません')}
+  if(!j||j.app!=='andz-crm'||!Array.isArray(j.customers)||!Array.isArray(j.visits))throw new Error('このファイルはこのアプリのバックアップファイルではありません');
+  return j}
+function openRestore(file){
+  openSheet('ファイルから復元',async(body,s)=>{
+    body.innerHTML='<p class="hint">ファイルを読み込んでいます…</p>';
+    let j;try{j=await readBackup(file)}catch(e){body.innerHTML=`<p class="hint warn">${esc(e.message)}</p><p class="hint">「今すぐバックアップ」で作った「andz-backup_…」のファイルを選んでください。CSVは「CSVを取り込む」から入れてください。</p>`;return}
+    const np=Object.keys(j.photos||{}).length;
+    body.innerHTML=`<div class="result"><div><span>バックアップした日時</span><b>${esc(new Date(j.created).toLocaleString('ja-JP'))}</b></div><div><span>お客様</span><b>${j.customers.length}人</b></div><div><span>来店記録</span><b>${j.visits.length}件</b></div><div><span>写真</span><b>${np}枚</b></div></div>
+      <p class="hint">今このスマホにあるのは、お客様${D.customers.size}人・来店${D.visits.size}件です。復元すると、バックアップの内容に置きかわります。</p>
+      <button class="btn primary" id="rs-go">この内容で復元する</button>`;
+    $('#rs-go',body).onclick=e=>inlineConfirm(e.currentTarget,'今のデータは上書きされます。よろしいですか？（今の状態は「履歴から戻す」に残るので、あとで元に戻せます）','上書きして復元する',async()=>{
+      body.innerHTML='<p class="hint">復元しています…</p>';
+      try{await restoreBackup(j);toast('バックアップから復元しました');s.close()}catch(err){console.error(err);body.innerHTML='<p class="hint warn">復元できませんでした。もう一度お試しください。今のデータはそのままです。</p>'}});
+  });
+}
+async function restoreBackup(j){
+  ensureReal();
+  if(Store.mode==='local'&&Store.loadOk&&(D.customers.size||D.visits.size))await Hist.save('復元前の状態');
+  for(const [id,url] of Object.entries(j.photos||{})){try{const b=await (await fetch(url)).blob();await IDB.set(id,b,'photos')}catch(e){}}
+  D.customers.clear();D.visits.clear();j.customers.forEach(c=>D.customers.set(c.id,{...c}));j.visits.forEach(v=>D.visits.set(v.id,{...v}));
+  D.meta={nextNo:Math.max(+(j.meta&&j.meta.nextNo)||1,D.meta.nextNo||1)};D.ver++;S.missing=false;
+  assignNos();
+  if(Store.mode==='local')await Store.saveLocal(true);else Store.schedule();
+  refreshUI();
 }
 
 /* ---------- CSV import ---------- */
@@ -1121,6 +1172,7 @@ const ACT={
   metric:t=>{S.metric=t.dataset.m;render()},rankp:t=>{S.rankP=t.dataset.p;render()},an:t=>openAnalysis(t.dataset.kind),
   allstats:()=>openAllStats(),yearcmp:()=>openYearCmp(),import:()=>openImport(),
   bkLater:()=>{S.bkLater=true;renderBanner()},
+  restoreFile:()=>{const i=$('#rs-empty');if(!i)return;i.onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)openRestore(f)};i.click()},
   sample:()=>{loadSample();render()},clearSample:()=>{ensureReal();render()}
 };
 document.addEventListener('click',e=>{const t=e.target.closest('[data-act]');if(!t)return;const f=ACT[t.dataset.act];if(f){e.preventDefault();f(t,e)}});
